@@ -91,6 +91,28 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
+  machete:
+    name: Unused Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete
+
+      - name: Check for unused dependencies
+        run: cargo machete
+
   build-binaries:
     name: Build Binaries
     runs-on: ubuntu-latest
