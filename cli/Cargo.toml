@@ -1,6 +1,6 @@
 [package]
 name = "todo-tree"
-version = "0.5.0"
+version = "0.5.1"
 edition.workspace = true
 authors.workspace = true
 license-file.workspace = true
@@ -25,7 +25,7 @@ name = "tt"
 path = "src/bin/tt.rs"
 
 [dependencies]
-todo-tree-core = { path = "../core", version = "0.5.0" }
+todo-tree-core = { path = "../core", version = "0.5.1" }
 clap = { version = "4.5.60", features = ["derive", "env"] }
 regex = "1.12.3"
 ignore = "0.4.25"
@@ -35,7 +35,6 @@ yaml_serde = "0.10.3"
 colored = "3.1.1"
 anyhow = "1.0.102"
 directories-next = "2.0"
-glob = "0.3.3"
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/todo-tree-{ target }.tar.gz"
