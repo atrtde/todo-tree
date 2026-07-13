@@ -1,6 +1,6 @@
 [package]
 name = "todo-tree-core"
-version = "0.5.2"
+version = "0.5.3"
 edition.workspace = true
 authors.workspace = true
 license-file.workspace = true

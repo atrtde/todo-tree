@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "todo-tree"
-version = "0.5.1"
+version = "0.5.3"
 dependencies = [
  "anyhow",
  "clap",
@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "todo-tree-core"
-version = "0.5.1"
+version = "0.5.3"
 dependencies = [
  "serde",
 ]
