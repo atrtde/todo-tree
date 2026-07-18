@@ -1,8 +1,8 @@
 use super::options::PrintOptions;
 use super::utils::colorize_tag;
+use crate::core::ScanResult;
 use colored::Colorize;
 use std::io::{self, Write};
-use todo_tree_core::ScanResult;
 
 pub fn print_summary<W: Write>(
     writer: &mut W,

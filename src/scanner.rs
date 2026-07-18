@@ -1,9 +1,9 @@
+use crate::core::{ScanResult, TodoItem};
 use crate::parser::TodoParser;
 use eyre::{Result, WrapErr};
 use ignore::WalkBuilder;
 use ignore::overrides::OverrideBuilder;
 use std::path::Path;
-use todo_tree_core::{ScanResult, TodoItem};
 
 #[derive(Debug, Clone)]
 pub struct ScanOptions {

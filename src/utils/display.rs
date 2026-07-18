@@ -1,5 +1,5 @@
+use crate::core::Priority;
 use colored::Color;
-use todo_tree_core::Priority;
 
 pub fn priority_to_color(priority: Priority) -> Color {
     match priority {

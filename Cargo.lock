@@ -597,7 +597,7 @@ dependencies = [
 
 [[package]]
 name = "todo-tree"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "clap",
  "color-eyre",
@@ -608,15 +608,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "todo-tree-core",
  "yaml_serde",
-]
-
-[[package]]
-name = "todo-tree-core"
-version = "0.5.3"
-dependencies = [
- "serde",
 ]
 
 [[package]]

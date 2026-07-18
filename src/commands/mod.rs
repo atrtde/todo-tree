@@ -1,7 +1,7 @@
+use crate::core::ScanResult;
 use crate::{cli, config::Config};
 use eyre::Result;
 use std::path::Path;
-use todo_tree_core::ScanResult;
 
 pub mod init;
 pub mod list;

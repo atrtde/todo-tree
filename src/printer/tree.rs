@@ -1,11 +1,11 @@
 use super::options::PrintOptions;
 use super::utils::{colorize_tag, format_path, make_clickable_link, make_line_link};
+use crate::core::{ScanResult, TodoItem};
 use colored::Colorize;
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::Path;
 use std::path::PathBuf;
-use todo_tree_core::{ScanResult, TodoItem};
 
 pub fn print_tree<W: Write>(
     writer: &mut W,

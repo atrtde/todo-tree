@@ -1,4 +1,4 @@
-use crate::priority::Priority;
+use super::priority::Priority;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TagDefinition {

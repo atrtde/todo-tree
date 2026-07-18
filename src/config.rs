@@ -1,8 +1,8 @@
+use crate::core::tags::default_tag_names;
 use directories_next::BaseDirs;
 use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use todo_tree_core::tags::default_tag_names;
 
 #[derive(Debug, Clone, Default)]
 pub struct CliOptions {

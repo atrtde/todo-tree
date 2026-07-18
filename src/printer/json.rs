@@ -1,8 +1,8 @@
 use super::options::PrintOptions;
+use crate::core::ScanResult;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{self, Write};
-use todo_tree_core::ScanResult;
 
 #[derive(Debug, Serialize)]
 pub struct JsonOutput {

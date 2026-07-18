@@ -5,12 +5,12 @@ pub mod summary;
 pub mod tree;
 pub mod utils;
 
+use crate::core::ScanResult;
 use flat::print_flat;
 use json::print_json;
 pub use options::{OutputFormat, PrintOptions};
 use std::io::{self, Write};
 use summary::print_summary;
-use todo_tree_core::ScanResult;
 use tree::print_tree;
 
 pub struct Printer {

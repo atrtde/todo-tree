@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## todo-tree-0.6.0
+
+### Changed
+- Merged the `todo-tree-core` library crate into the `todo-tree` binary crate; the workspace is gone and the project is now a single crate. Core modules live under `todo_tree::core`. No user-facing CLI changes.
+
+### Deprecated
+- The standalone `todo-tree-core` crate on crates.io is no longer published. Depend on the `todo-tree` crate and use `todo_tree::core` for the library API instead.
+
 ## todo-tree-0.5.1
 
 ### Changed

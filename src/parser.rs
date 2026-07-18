@@ -1,6 +1,6 @@
+use crate::core::{DEFAULT_REGEX, Priority, TodoItem};
 use regex::{Regex, RegexBuilder};
 use std::path::Path;
-use todo_tree_core::{DEFAULT_REGEX, Priority, TodoItem};
 
 #[derive(Debug, Clone)]
 pub struct TodoParser {

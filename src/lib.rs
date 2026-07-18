@@ -1,16 +1,17 @@
 pub mod cli;
 pub mod commands;
 pub mod config;
+pub mod core;
 pub mod parser;
 pub mod printer;
 pub mod scanner;
 pub mod utils;
 
+pub use crate::core::{Priority, ScanResult, ScanSummary, TodoItem};
 use clap::Parser;
 use cli::{Cli, Commands};
 use commands::{init, list, scan, stats, tags as cli_tags, workflow};
 use eyre::Result;
-pub use todo_tree_core::{Priority, ScanResult, ScanSummary, TodoItem};
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();

@@ -1,8 +1,8 @@
 use super::options::PrintOptions;
+use crate::core::Priority;
 use crate::utils::display::priority_to_color;
 use colored::Colorize;
 use std::path::Path;
-use todo_tree_core::Priority;
 
 pub fn format_path(path: &Path, options: &PrintOptions) -> String {
     if options.full_paths {
