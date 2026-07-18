@@ -1,6 +1,6 @@
 use crate::cli::{self, ConfigFormat};
 use crate::config::Config;
-use anyhow::Result;
+use eyre::{Result, eyre};
 use std::path::PathBuf;
 
 pub fn run(args: cli::InitArgs) -> Result<()> {
@@ -12,10 +12,10 @@ pub fn run(args: cli::InitArgs) -> Result<()> {
     let path = PathBuf::from(filename);
 
     if path.exists() && !args.force {
-        anyhow::bail!(
+        return Err(eyre!(
             "Config file {} already exists. Use --force to overwrite.",
             filename
-        );
+        ));
     }
 
     let config = Config::new();

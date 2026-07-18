@@ -1,6 +1,4 @@
-fn main() {
-    if let Err(err) = todo_tree::run() {
-        eprintln!("Error: {:#}", err);
-        std::process::exit(1);
-    }
+fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+    todo_tree::run()
 }

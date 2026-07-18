@@ -6,10 +6,10 @@ pub mod printer;
 pub mod scanner;
 pub mod utils;
 
-use anyhow::Result;
 use clap::Parser;
 use cli::{Cli, Commands};
 use commands::{init, list, scan, stats, tags as cli_tags, workflow};
+use eyre::Result;
 pub use todo_tree_core::{Priority, ScanResult, ScanSummary, TodoItem};
 
 pub fn run() -> Result<()> {

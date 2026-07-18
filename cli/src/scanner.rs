@@ -1,5 +1,5 @@
 use crate::parser::TodoParser;
-use anyhow::{Context, Result};
+use eyre::{Result, WrapErr};
 use ignore::WalkBuilder;
 use ignore::overrides::OverrideBuilder;
 use std::path::Path;
@@ -43,7 +43,7 @@ impl Scanner {
     pub fn scan(&self, root: &Path) -> Result<ScanResult> {
         let root = root
             .canonicalize()
-            .with_context(|| format!("Failed to resolve path: {}", root.display()))?;
+            .wrap_err_with(|| format!("Failed to resolve path: {}", root.display()))?;
 
         let mut result = ScanResult::new(root.clone());
         let mut builder = WalkBuilder::new(&root);
@@ -68,14 +68,14 @@ impl Scanner {
             for pattern in &self.options.include {
                 override_builder
                     .add(pattern)
-                    .with_context(|| format!("Invalid include pattern: {}", pattern))?;
+                    .wrap_err_with(|| format!("Invalid include pattern: {}", pattern))?;
             }
 
             for pattern in &self.options.exclude {
                 let exclude_pattern = format!("!{}", pattern);
                 override_builder
                     .add(&exclude_pattern)
-                    .with_context(|| format!("Invalid exclude pattern: {}", pattern))?;
+                    .wrap_err_with(|| format!("Invalid exclude pattern: {}", pattern))?;
             }
 
             let overrides = override_builder.build()?;
@@ -118,6 +118,6 @@ impl Scanner {
     fn parse_file(&self, path: &Path) -> Result<Vec<TodoItem>> {
         self.parser
             .parse_file(path)
-            .with_context(|| format!("Failed to parse file: {}", path.display()))
+            .wrap_err_with(|| format!("Failed to parse file: {}", path.display()))
     }
 }

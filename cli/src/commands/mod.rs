@@ -1,5 +1,5 @@
 use crate::{cli, config::Config};
-use anyhow::Result;
+use eyre::Result;
 use std::path::Path;
 use todo_tree_core::ScanResult;
 

@@ -1,6 +1,6 @@
 use super::load_config;
 use crate::{cli, utils::display::priority_to_color};
-use anyhow::Result;
+use eyre::Result;
 use todo_tree_core::Priority;
 use todo_tree_core::tags::default_tag_names;
 

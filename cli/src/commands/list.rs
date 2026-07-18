@@ -5,14 +5,14 @@ use crate::{
     printer::{OutputFormat, PrintOptions, Printer},
     scanner::{ScanOptions, Scanner},
 };
-use anyhow::{Context, Result};
+use eyre::{Result, WrapErr};
 use std::path::PathBuf;
 
 pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
     let path = path
         .canonicalize()
-        .with_context(|| format!("Failed to resolve path: {}", path.display()))?;
+        .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
     let mut config = load_config(&path, global.config.as_deref())?;
     config.merge_with_cli(crate::config::CliOptions {

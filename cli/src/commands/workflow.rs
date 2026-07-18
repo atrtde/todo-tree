@@ -1,5 +1,5 @@
 use crate::cli::{WorkflowArgs, WorkflowCommands, WorkflowInitArgs};
-use anyhow::{Context, Result};
+use eyre::{Result, WrapErr, eyre};
 use std::path::{Path, PathBuf};
 
 const DEFAULT_WORKFLOW_PATH: &str = ".github/workflows/todo-tree.yml";
@@ -32,10 +32,10 @@ fn default_action_ref() -> String {
 
 fn validate_action_ref(action: &str) -> Result<()> {
     let Some((repo, reference)) = action.split_once('@') else {
-        anyhow::bail!(
+        return Err(eyre!(
             "Invalid action reference {:?}. Expected format: owner/repo@ref",
             action
-        );
+        ));
     };
 
     let mut repo_parts = repo.split('/');
@@ -52,10 +52,10 @@ fn validate_action_ref(action: &str) -> Result<()> {
         || action.contains('\t')
         || reference.contains('@')
     {
-        anyhow::bail!(
+        return Err(eyre!(
             "Invalid action reference {:?}. Expected format: owner/repo@ref",
             action
-        );
+        ));
     }
 
     Ok(())
@@ -91,19 +91,19 @@ jobs:
 
 fn write_workflow_template(path: &Path, force: bool, action: &str) -> Result<()> {
     if path.exists() && !force {
-        anyhow::bail!(
+        return Err(eyre!(
             "Workflow file {} already exists. Use --force to overwrite.",
             path.display()
-        );
+        ));
     }
 
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+            .wrap_err_with(|| format!("Failed to create directory: {}", parent.display()))?;
     }
 
     std::fs::write(path, workflow_template(action))
-        .with_context(|| format!("Failed to write workflow file: {}", path.display()))?;
+        .wrap_err_with(|| format!("Failed to write workflow file: {}", path.display()))?;
 
     Ok(())
 }

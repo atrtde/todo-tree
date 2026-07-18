@@ -5,8 +5,8 @@ use crate::{
     scanner::{ScanOptions, Scanner},
     utils::display::priority_to_color,
 };
-use anyhow::{Context, Result};
 use colored::Colorize;
+use eyre::{Result, WrapErr};
 use serde_json::json;
 use todo_tree_core::Priority;
 
@@ -17,7 +17,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
         .unwrap_or_else(|| std::path::PathBuf::from("."));
     let path = path
         .canonicalize()
-        .with_context(|| format!("Failed to resolve path: {}", path.display()))?;
+        .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
     let config = load_config(&path, global.config.as_deref())?;
     let tags = args.tags.clone().unwrap_or(config.tags.clone());

@@ -1,5 +1,5 @@
-use anyhow::{Context, Result};
 use directories_next::BaseDirs;
+use eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use todo_tree_core::tags::default_tag_names;
@@ -93,7 +93,7 @@ impl Config {
 
     pub fn load_from_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
-            .with_context(|| format!("Failed to read config file: {}", path.display()))?;
+            .wrap_err_with(|| format!("Failed to read config file: {}", path.display()))?;
 
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let parse_result = if extension == "yaml" || extension == "yml" {
@@ -102,7 +102,7 @@ impl Config {
             serde_json::from_str(&content).or_else(|_| yaml_serde::from_str(&content))
         };
 
-        parse_result.with_context(|| format!("Failed to parse config: {}", path.display()))
+        parse_result.wrap_err_with(|| format!("Failed to parse config: {}", path.display()))
     }
 
     pub fn merge_with_cli(&mut self, cli: CliOptions) {
@@ -152,7 +152,7 @@ impl Config {
         };
 
         std::fs::write(path, content)
-            .with_context(|| format!("Failed to write config file: {}", path.display()))?;
+            .wrap_err_with(|| format!("Failed to write config file: {}", path.display()))?;
 
         Ok(())
     }
