@@ -25,7 +25,7 @@ jobs:
 
           if [ -f "$GITHUB_EVENT_PATH" ] && jq -e .release "$GITHUB_EVENT_PATH" >/dev/null; then
             TAG_NAME=$(jq -r .release.tag_name "$GITHUB_EVENT_PATH")
-            VERSION="${TAG_NAME#todo-tree-v}"
+            VERSION="${TAG_NAME#v}"
           else
             VERSION="${{ github.event.inputs.version }}"
           fi
@@ -36,7 +36,7 @@ jobs:
         id: sha256
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          BASE_URL="https://github.com/atrtde/todo-tree/releases/download/todo-tree-v${VERSION}"
+          BASE_URL="https://github.com/atrtde/todo-tree/releases/download/v${VERSION}"
 
           curl -fsSL "${BASE_URL}/todo-tree-aarch64-apple-darwin.tar.gz" -o arm64-darwin.tar.gz
           curl -fsSL "${BASE_URL}/todo-tree-x86_64-apple-darwin.tar.gz" -o x86_64-darwin.tar.gz
@@ -72,24 +72,24 @@ jobs:
 
             on_macos do
               on_arm do
-                url "https://github.com/atrtde/todo-tree/releases/download/todo-tree-v#{version}/todo-tree-aarch64-apple-darwin.tar.gz"
+                url "https://github.com/atrtde/todo-tree/releases/download/v#{version}/todo-tree-aarch64-apple-darwin.tar.gz"
                 sha256 "ARM64_DARWIN_SHA256"
               end
 
               on_intel do
-                url "https://github.com/atrtde/todo-tree/releases/download/todo-tree-v#{version}/todo-tree-x86_64-apple-darwin.tar.gz"
+                url "https://github.com/atrtde/todo-tree/releases/download/v#{version}/todo-tree-x86_64-apple-darwin.tar.gz"
                 sha256 "X86_64_DARWIN_SHA256"
               end
             end
 
             on_linux do
               on_arm do
-                url "https://github.com/atrtde/todo-tree/releases/download/todo-tree-v#{version}/todo-tree-aarch64-unknown-linux-gnu.tar.gz"
+                url "https://github.com/atrtde/todo-tree/releases/download/v#{version}/todo-tree-aarch64-unknown-linux-gnu.tar.gz"
                 sha256 "ARM64_LINUX_SHA256"
               end
 
               on_intel do
-                url "https://github.com/atrtde/todo-tree/releases/download/todo-tree-v#{version}/todo-tree-x86_64-unknown-linux-gnu.tar.gz"
+                url "https://github.com/atrtde/todo-tree/releases/download/v#{version}/todo-tree-x86_64-unknown-linux-gnu.tar.gz"
                 sha256 "X86_64_LINUX_SHA256"
               end
             end
