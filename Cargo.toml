@@ -11,6 +11,7 @@ readme = "README.md"
 keywords = ["todo", "cli", "developer-tools", "productivity"]
 categories = ["command-line-utilities", "development-tools"]
 default-run = "todo-tree"
+exclude = ["assets/", ".github/", "flake.nix", "flake.lock", ".envrc"]
 
 [lib]
 name = "todo_tree"
