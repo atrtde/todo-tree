@@ -5,7 +5,7 @@ use crate::{
     printer::{OutputFormat, PrintOptions, Printer},
     scanner::{ScanOptions, Scanner},
 };
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
 
 pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {

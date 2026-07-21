@@ -1,6 +1,6 @@
 use crate::core::tags::default_tag_names;
 use directories_next::BaseDirs;
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 

@@ -1,6 +1,6 @@
 use crate::cli::{self, ConfigFormat};
 use crate::config::Config;
-use eyre::{Result, eyre};
+use color_eyre::eyre::{Result, eyre};
 use std::path::PathBuf;
 
 pub fn run(args: cli::InitArgs) -> Result<()> {

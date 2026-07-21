@@ -11,7 +11,7 @@ pub use crate::core::{Priority, ScanResult, ScanSummary, TodoItem};
 use clap::Parser;
 use cli::{Cli, Commands};
 use commands::{init, list, scan, stats, tags as cli_tags, workflow};
-use eyre::Result;
+use color_eyre::eyre::Result;
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();

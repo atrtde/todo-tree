@@ -1,6 +1,6 @@
 use crate::core::{ScanResult, TodoItem};
 use crate::parser::TodoParser;
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use ignore::WalkBuilder;
 use ignore::overrides::OverrideBuilder;
 use std::path::Path;

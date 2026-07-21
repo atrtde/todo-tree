@@ -7,7 +7,7 @@ use crate::{
     utils::display::priority_to_color,
 };
 use colored::Colorize;
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use serde_json::json;
 
 pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {

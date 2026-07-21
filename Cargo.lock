@@ -603,7 +603,6 @@ dependencies = [
  "color-eyre",
  "colored",
  "directories-next",
- "eyre",
  "ignore",
  "regex",
  "serde",

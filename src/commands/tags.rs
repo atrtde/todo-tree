@@ -2,7 +2,7 @@ use super::load_config;
 use crate::core::Priority;
 use crate::core::tags::default_tag_names;
 use crate::{cli, utils::display::priority_to_color};
-use eyre::Result;
+use color_eyre::eyre::Result;
 
 pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let current_dir = std::env::current_dir()?;

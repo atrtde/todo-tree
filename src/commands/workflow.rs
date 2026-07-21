@@ -1,5 +1,5 @@
 use crate::cli::{WorkflowArgs, WorkflowCommands, WorkflowInitArgs};
-use eyre::{Result, WrapErr, eyre};
+use color_eyre::eyre::{Result, WrapErr, eyre};
 use std::path::{Path, PathBuf};
 
 const DEFAULT_WORKFLOW_PATH: &str = ".github/workflows/todo-tree.yml";

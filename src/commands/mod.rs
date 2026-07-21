@@ -1,6 +1,6 @@
 use crate::core::ScanResult;
 use crate::{cli, config::Config};
-use eyre::Result;
+use color_eyre::eyre::Result;
 use std::path::Path;
 
 pub mod init;
