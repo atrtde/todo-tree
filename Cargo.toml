@@ -1,11 +1,11 @@
 [package]
 name = "todo-tree"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2024"
-authors = ["atrtde"]
+authors = ["Alexandre Trotel"]
 license-file = "LICENSE"
-repository = "https://github.com/atrtde/todo-tree"
-homepage = "https://github.com/atrtde/todo-tree"
+repository = "https://github.com/alexandretrotel/todo-tree"
+homepage = "https://github.com/alexandretrotel/todo-tree"
 description = "A CLI tool to find and display TODO-style comments in your codebase"
 readme = "README.md"
 keywords = ["todo", "cli", "developer-tools", "productivity"]
