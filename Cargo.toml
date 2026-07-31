@@ -1,6 +1,6 @@
 [package]
 name = "todo-tree"
-version = "0.6.2"
+version = "0.6.3"
 edition = "2024"
 authors = ["Alexandre Trotel"]
 license-file = "LICENSE"
@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["todo", "cli", "developer-tools", "productivity"]
 categories = ["command-line-utilities", "development-tools"]
 default-run = "todo-tree"
-exclude = ["assets/", ".github/", "flake.nix", "flake.lock", ".envrc"]
+include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [lib]
 name = "todo_tree"
