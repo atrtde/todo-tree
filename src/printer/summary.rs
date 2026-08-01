@@ -1,6 +1,7 @@
 use super::options::PrintOptions;
 use super::utils::colorize_tag;
 use crate::core::ScanResult;
+use crate::utils::display::format_duration;
 use colored::Colorize;
 use std::io::{self, Write};
 
@@ -10,8 +11,11 @@ pub fn print_summary<W: Write>(
     options: &PrintOptions,
 ) -> io::Result<()> {
     let summary_line = format!(
-        "Found {} TODO items in {} files ({} files scanned)",
-        result.summary.total_count, result.summary.files_with_todos, result.summary.files_scanned
+        "Found {} TODO items in {} files ({} files scanned in {})",
+        result.summary.total_count,
+        result.summary.files_with_todos,
+        result.summary.files_scanned,
+        format_duration(result.summary.duration_ms)
     );
 
     if options.colored {

@@ -37,6 +37,8 @@ pub struct ScanSummary {
     pub files_with_todos: usize,
     pub files_scanned: usize,
     pub tag_counts: HashMap<String, usize>,
+    #[serde(default)]
+    pub duration_ms: u128,
 }
 
 impl ScanSummary {
@@ -78,6 +80,7 @@ impl ScanResult {
                 files_with_todos: 0,
                 files_scanned: 0,
                 tag_counts: HashMap::new(),
+                duration_ms: 0,
             },
             root: Some(root),
         }
@@ -135,6 +138,7 @@ impl ScanResult {
         let root = self.root.clone().unwrap_or_else(|| PathBuf::from("."));
         let mut result = ScanResult::new(root);
         result.summary.files_scanned = self.summary.files_scanned;
+        result.summary.duration_ms = self.summary.duration_ms;
 
         for (path, items) in &self.files_map {
             let filtered: Vec<TodoItem> = items

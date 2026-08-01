@@ -33,6 +33,7 @@ pub struct JsonSummary {
     pub files_with_todos: usize,
     pub files_scanned: usize,
     pub tag_counts: HashMap<String, usize>,
+    pub duration_ms: u128,
 }
 
 pub fn print_json<W: Write>(
@@ -86,6 +87,7 @@ impl JsonOutput {
             files_with_todos: result.summary.files_with_todos,
             files_scanned: result.summary.files_scanned,
             tag_counts: result.summary.tag_counts.clone(),
+            duration_ms: result.summary.duration_ms,
         };
 
         Self { files, summary }

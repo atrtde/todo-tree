@@ -4,6 +4,7 @@ use color_eyre::eyre::{Result, WrapErr};
 use ignore::WalkBuilder;
 use ignore::overrides::OverrideBuilder;
 use std::path::Path;
+use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub struct ScanOptions {
@@ -41,6 +42,7 @@ impl Scanner {
     }
 
     pub fn scan(&self, root: &Path) -> Result<ScanResult> {
+        let start = Instant::now();
         let root = root
             .canonicalize()
             .wrap_err_with(|| format!("Failed to resolve path: {}", root.display()))?;
@@ -111,6 +113,8 @@ impl Scanner {
                 }
             }
         }
+
+        result.summary.duration_ms = start.elapsed().as_millis();
 
         Ok(result)
     }

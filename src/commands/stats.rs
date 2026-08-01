@@ -4,7 +4,7 @@ use crate::{
     cli,
     parser::TodoParser,
     scanner::{ScanOptions, Scanner},
-    utils::display::priority_to_color,
+    utils::display::{format_duration, priority_to_color},
 };
 use colored::Colorize;
 use color_eyre::eyre::{Result, WrapErr};
@@ -32,6 +32,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
             "files_with_todos": result.summary.files_with_todos,
             "files_scanned": result.summary.files_scanned,
             "tag_counts": result.summary.tag_counts,
+            "duration_ms": result.summary.duration_ms,
             "items_per_file": if result.summary.files_with_todos > 0 {
                 result.summary.total_count as f64 / result.summary.files_with_todos as f64
             } else {
@@ -45,6 +46,10 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
         println!("  Total items:        {}", result.summary.total_count);
         println!("  Files with TODOs:   {}", result.summary.files_with_todos);
         println!("  Files scanned:      {}", result.summary.files_scanned);
+        println!(
+            "  Scan time:          {}",
+            format_duration(result.summary.duration_ms)
+        );
 
         if result.summary.files_with_todos > 0 {
             let avg = result.summary.total_count as f64 / result.summary.files_with_todos as f64;
