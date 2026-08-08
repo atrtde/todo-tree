@@ -154,7 +154,7 @@ no_color = false
 2. `.todorc.json` in the current directory
 3. `.todorc.toml` in the current directory
 4. Parent directories (recursive)
-5. `~/.config/todo-tree/config.json` or `config.toml` (global config)
+5. `$XDG_CONFIG_HOME/todo-tree/config.json` or `config.toml` (global config); falls back to the platform config directory (e.g. `~/.config` on Linux, `~/Library/Application Support` on macOS) if `XDG_CONFIG_HOME` isn't set
 
 ## Tag Matching Rules
 
