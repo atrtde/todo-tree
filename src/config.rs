@@ -340,6 +340,65 @@ mod tests {
     }
 
     #[test]
+    fn load_returns_none_when_nothing_found_anywhere() {
+        let _lock = XDG_ENV_LOCK.lock().unwrap();
+        // Force `config_home()` to resolve to a guaranteed-empty directory so
+        // this test doesn't depend on whether the machine running it happens
+        // to have a real global todo-tree config.
+        let empty_xdg = temp_path("empty_xdg");
+        fs::create_dir_all(&empty_xdg).unwrap();
+        let scan_dir = temp_path("no_config_anywhere");
+        fs::create_dir_all(&scan_dir).unwrap();
+
+        let previous = std::env::var_os("XDG_CONFIG_HOME");
+        unsafe {
+            std::env::set_var("XDG_CONFIG_HOME", &empty_xdg);
+        }
+        let result = Config::load(&scan_dir);
+        unsafe {
+            match &previous {
+                Some(v) => std::env::set_var("XDG_CONFIG_HOME", v),
+                None => std::env::remove_var("XDG_CONFIG_HOME"),
+            }
+        }
+        let _ = fs::remove_dir_all(&empty_xdg);
+        let _ = fs::remove_dir_all(&scan_dir);
+
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn load_falls_back_to_global_config_dir() {
+        let _lock = XDG_ENV_LOCK.lock().unwrap();
+        let xdg_dir = temp_path("global_xdg");
+        let todo_tree_dir = xdg_dir.join("todo-tree");
+        fs::create_dir_all(&todo_tree_dir).unwrap();
+        fs::write(todo_tree_dir.join("config.json"), r#"{"tags": ["GLOBAL"]}"#).unwrap();
+
+        let scan_dir = temp_path("global_scan_target");
+        fs::create_dir_all(&scan_dir).unwrap();
+
+        let previous = std::env::var_os("XDG_CONFIG_HOME");
+        unsafe {
+            std::env::set_var("XDG_CONFIG_HOME", &xdg_dir);
+        }
+        let result = Config::load(&scan_dir);
+        unsafe {
+            match &previous {
+                Some(v) => std::env::set_var("XDG_CONFIG_HOME", v),
+                None => std::env::remove_var("XDG_CONFIG_HOME"),
+            }
+        }
+        let _ = fs::remove_dir_all(&xdg_dir);
+        let _ = fs::remove_dir_all(&scan_dir);
+
+        let config = result
+            .unwrap()
+            .expect("expected the global config to be found");
+        assert_eq!(config.tags, vec!["GLOBAL".to_string()]);
+    }
+
+    #[test]
     fn load_finds_exact_todorc_filename() {
         let dir = temp_path("exact_todorc");
         fs::create_dir_all(&dir).unwrap();

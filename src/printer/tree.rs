@@ -231,6 +231,15 @@ mod tests {
         result
     }
 
+    fn tag_with_multiple_items_result() -> ScanResult {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(
+            PathBuf::from("a.rs"),
+            vec![item("TODO", 1, None), item("TODO", 2, None)],
+        );
+        result
+    }
+
     #[test]
     fn print_tree_reports_empty_result() {
         let result = ScanResult::new(PathBuf::from("."));
@@ -308,5 +317,23 @@ mod tests {
         let output = String::from_utf8(buf).unwrap();
 
         assert!(output.contains("msg"));
+    }
+
+    #[test]
+    fn print_tree_by_tag_marks_non_last_items_within_a_tag() {
+        let result = tag_with_multiple_items_result();
+        let opts = PrintOptions {
+            group_by_tag: true,
+            ..options()
+        };
+        let mut buf = Vec::new();
+
+        print_tree(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        // One tag (header uses "└──" since it's the only/last tag), with two
+        // items: the first is not-last ("├──"), the second is last ("└──").
+        assert_eq!(output.matches("├──").count(), 1);
+        assert_eq!(output.matches("└──").count(), 2);
     }
 }

@@ -201,6 +201,19 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
+    fn scan_skips_broken_symlinks() {
+        let dir = temp_dir("broken_symlink");
+        fs::write(dir.join("real.rs"), "// TODO: real file\n").unwrap();
+        std::os::unix::fs::symlink(dir.join("does_not_exist.rs"), dir.join("dangling.rs")).unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
     fn scan_respects_include_patterns() {
         let dir = temp_dir("include");
         fs::write(dir.join("a.rs"), "// TODO: rust file\n").unwrap();

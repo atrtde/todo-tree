@@ -176,6 +176,31 @@ mod tests {
         assert!(result.files.is_none());
     }
 
+    fn empty_summary() -> ScanSummary {
+        ScanSummary {
+            total_count: 0,
+            files_with_todos: 0,
+            files_scanned: 0,
+            tag_counts: HashMap::new(),
+            duration_ms: 0,
+        }
+    }
+
+    #[test]
+    fn is_empty_checks_files_when_json_form() {
+        let empty = ScanResult::from_json(vec![], empty_summary());
+        assert!(empty.is_empty());
+
+        let non_empty = ScanResult::from_json(
+            vec![FileResult {
+                path: "a.rs".to_string(),
+                items: vec![item("TODO", 1)],
+            }],
+            empty_summary(),
+        );
+        assert!(!non_empty.is_empty());
+    }
+
     #[test]
     fn add_file_updates_summary_and_map() {
         let mut result = ScanResult::new(PathBuf::from("."));
