@@ -37,8 +37,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -63,7 +61,7 @@ jobs:
           echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
 
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} -p todo-tree
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create archive (Unix)
         if: runner.os != 'Windows'
@@ -110,8 +108,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
 
       - name: Download all artifacts
         uses: actions/download-artifact@v7
