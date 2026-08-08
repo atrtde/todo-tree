@@ -84,19 +84,11 @@ jobs:
           Copy-Item LICENSE dist/todo-tree-${{ matrix.target }}/
           Compress-Archive -Path dist/todo-tree-${{ matrix.target }} -DestinationPath dist/todo-tree-${{ matrix.target }}.zip
 
-      - name: Upload artifact (Unix)
-        if: runner.os != 'Windows'
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: todo-tree-${{ matrix.target }}
-          path: dist/todo-tree-${{ matrix.target }}.tar.gz
-
-      - name: Upload artifact (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v6
-        with:
-          name: todo-tree-${{ matrix.target }}
-          path: dist/todo-tree-${{ matrix.target }}.zip
+          path: dist/todo-tree-${{ matrix.target }}.*
 
   release:
     name: Create Release
