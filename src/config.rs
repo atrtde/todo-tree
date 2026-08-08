@@ -1,8 +1,17 @@
 use crate::core::tags::default_tag_names;
 use color_eyre::eyre::{Result, WrapErr};
-use directories_next::BaseDirs;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+/// Resolves the global config directory, honoring `XDG_CONFIG_HOME` on all
+/// platforms (not just Linux, where `dirs::config_dir` already does this)
+/// before falling back to the platform default.
+fn config_home() -> Option<PathBuf> {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .filter(|p| !p.as_os_str().is_empty())
+        .or_else(dirs::config_dir)
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct CliOptions {
@@ -52,7 +61,9 @@ impl Config {
     /// 2. .todorc.json in the current directory
     /// 3. .todorc.toml in the current directory
     /// 4. Parent directories (recursive)
-    /// 5. ~/.config/todo-tree/config.json or config.toml (global config)
+    /// 5. `$XDG_CONFIG_HOME/todo-tree/config.json` or `config.toml`, falling
+    ///    back to the platform config directory if `XDG_CONFIG_HOME` isn't
+    ///    set (global config)
     pub fn load(start_path: &Path) -> Result<Option<Self>> {
         let local_configs = [
             start_path.join(".todorc"),
@@ -73,8 +84,7 @@ impl Config {
             return Ok(Some(config));
         }
 
-        if let Some(base_dirs) = BaseDirs::new() {
-            let config_dir = base_dirs.config_dir();
+        if let Some(config_dir) = config_home() {
             let global_configs = [
                 config_dir.join("todo-tree").join("config.json"),
                 config_dir.join("todo-tree").join("config.toml"),
@@ -183,6 +193,24 @@ mod tests {
 
         assert_eq!(config.tags, vec!["TODO".to_string(), "FIXME".to_string()]);
         assert!(config.ignore_case);
+    }
+
+    #[test]
+    fn config_home_prefers_xdg_config_home_when_set() {
+        let dir = temp_path("xdg");
+
+        // SAFETY: mutating process env is inherently racy under parallel
+        // test execution; the window is kept as narrow as possible and the
+        // var is always removed before returning.
+        unsafe {
+            std::env::set_var("XDG_CONFIG_HOME", &dir);
+        }
+        let resolved = config_home();
+        unsafe {
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
+
+        assert_eq!(resolved, Some(dir));
     }
 
     #[test]
