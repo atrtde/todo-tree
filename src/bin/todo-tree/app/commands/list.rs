@@ -1,12 +1,11 @@
 use super::load_config;
-use crate::{
-    cli,
-    parser::TodoParser,
-    printer::{OutputFormat, PrintOptions, Printer},
-    scanner::{ScanOptions, Scanner},
-};
+use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
+use todo_tree::config::CliOptions;
+use todo_tree::parser::TodoParser;
+use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
+use todo_tree::scanner::{ScanOptions, Scanner};
 
 pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
@@ -15,7 +14,7 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
     let mut config = load_config(&path, global.config.as_deref())?;
-    config.merge_with_cli(crate::config::CliOptions {
+    config.merge_with_cli(CliOptions {
         tags: args.tags.clone(),
         include: args.include.clone(),
         exclude: args.exclude.clone(),

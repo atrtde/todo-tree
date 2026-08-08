@@ -1,7 +1,7 @@
-use crate::cli::{self, ConfigFormat};
-use crate::config::Config;
+use crate::app::cli::{self, ConfigFormat};
 use color_eyre::eyre::{Result, eyre};
 use std::path::PathBuf;
+use todo_tree::config::Config;
 
 pub fn run(args: cli::InitArgs) -> Result<()> {
     let filename = match args.format {

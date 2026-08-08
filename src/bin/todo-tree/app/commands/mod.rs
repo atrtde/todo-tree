@@ -1,7 +1,8 @@
-use crate::core::ScanResult;
-use crate::{cli, config::Config};
+use crate::app::cli;
 use color_eyre::eyre::Result;
 use std::path::Path;
+use todo_tree::config::Config;
+use todo_tree::core::ScanResult;
 
 pub mod init;
 pub mod list;
