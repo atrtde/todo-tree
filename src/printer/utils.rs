@@ -1,3 +1,5 @@
+//! Path formatting, terminal hyperlink, and tag-coloring helpers.
+
 use super::options::PrintOptions;
 use crate::core::Priority;
 use colored::{Color, Colorize};
@@ -20,6 +22,8 @@ pub(crate) fn priority_to_color(priority: Priority) -> Color {
     }
 }
 
+/// Formats `path` per `options`: absolute if `options.full_paths`,
+/// relative to `options.base_path` if set, else as-is.
 pub fn format_path(path: &Path, options: &PrintOptions) -> String {
     if options.full_paths {
         path.display().to_string()
@@ -32,6 +36,9 @@ pub fn format_path(path: &Path, options: &PrintOptions) -> String {
     }
 }
 
+/// Builds an OSC 8 terminal hyperlink to `path` at `line`, showing the
+/// formatted path as link text. Returns `None` if `options.clickable_links`
+/// is off or the terminal doesn't advertise hyperlink support.
 pub fn make_clickable_link(path: &Path, line: usize, options: &PrintOptions) -> Option<String> {
     if !options.clickable_links || !supports_hyperlinks() {
         return None;
@@ -54,6 +61,9 @@ pub fn make_clickable_link(path: &Path, line: usize, options: &PrintOptions) -> 
     Some(link)
 }
 
+/// Builds an OSC 8 terminal hyperlink to `path` at `line`, showing
+/// `"L{line}"` as link text. Returns `None` under the same conditions as
+/// [`make_clickable_link`].
 pub fn make_line_link(path: &Path, line: usize, options: &PrintOptions) -> Option<String> {
     if !options.clickable_links || !supports_hyperlinks() {
         return None;
@@ -76,6 +86,8 @@ pub fn make_line_link(path: &Path, line: usize, options: &PrintOptions) -> Optio
     Some(link)
 }
 
+/// Colors `tag` by its derived [`Priority`], or returns it unchanged if
+/// `options.colored` is off.
 pub fn colorize_tag(tag: &str, options: &PrintOptions) -> String {
     if !options.colored {
         return tag.to_string();

@@ -5,6 +5,8 @@ use colored::Colorize;
 use std::io::{self, Write};
 use std::path::Path;
 
+/// Renders `result` as a flat, one-line-per-item list sorted by file then
+/// line number.
 pub fn print_flat<W: Write>(
     writer: &mut W,
     result: &ScanResult,

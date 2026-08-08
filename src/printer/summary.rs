@@ -4,6 +4,8 @@ use crate::core::ScanResult;
 use colored::Colorize;
 use std::io::{self, Write};
 
+/// Renders the summary block: total/file/scan counts, duration, and a
+/// per-tag breakdown.
 pub fn print_summary<W: Write>(
     writer: &mut W,
     result: &ScanResult,

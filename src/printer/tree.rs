@@ -7,6 +7,8 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::path::PathBuf;
 
+/// Renders `result` as a hierarchical tree, grouped by file or (if
+/// `options.group_by_tag`) by tag.
 pub fn print_tree<W: Write>(
     writer: &mut W,
     result: &ScanResult,
