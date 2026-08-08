@@ -779,7 +779,6 @@ dependencies = [
  "dirs",
  "ignore",
  "memchr",
- "notify",
  "notify-debouncer-mini",
  "regex",
  "serde",
