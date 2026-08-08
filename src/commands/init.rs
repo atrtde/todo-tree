@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub fn run(args: cli::InitArgs) -> Result<()> {
     let filename = match args.format {
         ConfigFormat::Json => ".todorc.json",
-        ConfigFormat::Yaml => ".todorc.yaml",
+        ConfigFormat::Toml => ".todorc.toml",
     };
 
     let path = PathBuf::from(filename);

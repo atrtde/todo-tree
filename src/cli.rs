@@ -172,7 +172,7 @@ pub struct InitArgs {
     #[arg(
         long,
         default_value = "json",
-        help = "Configuration format: json or yaml"
+        help = "Configuration format: json or toml"
     )]
     pub format: ConfigFormat,
     #[arg(short, long, help = "Overwrite the config file if it exists")]
@@ -241,8 +241,8 @@ pub enum ConfigFormat {
     #[default]
     #[value(name = "json", help = "Generate JSON config")]
     Json,
-    #[value(name = "yaml", help = "Generate YAML config")]
-    Yaml,
+    #[value(name = "toml", help = "Generate TOML config")]
+    Toml,
 }
 
 impl Cli {

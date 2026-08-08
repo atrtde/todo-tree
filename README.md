@@ -10,7 +10,7 @@ A command-line tool to find and display TODO-style comments in your codebase, si
 - 🏷️ **Configurable tags** - TODO, FIXME, BUG, NOTE, HACK, WARN, PERF, and more (and custom tags)
 - 🌳 **Tree view output** - Beautiful hierarchical display grouped by file
 - 📋 **Multiple output formats** - Tree, flat list, and JSON
-- ⚙️ **Configuration file support** - `.todorc` in JSON or YAML format
+- ⚙️ **Configuration file support** - `.todorc` in JSON or TOML format
 - 🎨 **Colored output** - Priority-based coloring for different tag types
 - 🔗 **Clickable links** - Terminal hyperlinks to file locations (where supported)
 - 🤖 **GitHub Action** - Automatically scan PRs and post TODO summaries as comments
@@ -120,7 +120,7 @@ tt workflow init
 
 ## Configuration
 
-Create a `.todorc.json` or `.todorc.yaml` file in your project root:
+Create a `.todorc.json` or `.todorc.toml` file in your project root:
 
 ### JSON Format (`.todorc.json`)
 

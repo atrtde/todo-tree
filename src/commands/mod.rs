@@ -26,8 +26,7 @@ pub(crate) fn save_config(config: &Config) -> Result<()> {
     let config_files = [
         current_dir.join(".todorc"),
         current_dir.join(".todorc.json"),
-        current_dir.join(".todorc.yaml"),
-        current_dir.join(".todorc.yml"),
+        current_dir.join(".todorc.toml"),
     ];
 
     for path in &config_files {

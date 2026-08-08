@@ -1,6 +1,6 @@
 use crate::core::tags::default_tag_names;
-use directories_next::BaseDirs;
 use color_eyre::eyre::{Result, WrapErr};
+use directories_next::BaseDirs;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -50,14 +50,14 @@ impl Config {
     /// Searches for configuration files in the following order:
     /// 1. .todorc in the current directory
     /// 2. .todorc.json in the current directory
-    /// 3. .todorc.yaml or .todorc.yml in the current directory
-    /// 4. ~/.config/todo-tree/config.json (global config)
+    /// 3. .todorc.toml in the current directory
+    /// 4. Parent directories (recursive)
+    /// 5. ~/.config/todo-tree/config.json or config.toml (global config)
     pub fn load(start_path: &Path) -> Result<Option<Self>> {
         let local_configs = [
             start_path.join(".todorc"),
             start_path.join(".todorc.json"),
-            start_path.join(".todorc.yaml"),
-            start_path.join(".todorc.yml"),
+            start_path.join(".todorc.toml"),
         ];
 
         for config_path in &local_configs {
@@ -77,8 +77,7 @@ impl Config {
             let config_dir = base_dirs.config_dir();
             let global_configs = [
                 config_dir.join("todo-tree").join("config.json"),
-                config_dir.join("todo-tree").join("config.yaml"),
-                config_dir.join("todo-tree").join("config.yml"),
+                config_dir.join("todo-tree").join("config.toml"),
             ];
 
             for config_path in &global_configs {
@@ -96,10 +95,12 @@ impl Config {
             .wrap_err_with(|| format!("Failed to read config file: {}", path.display()))?;
 
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        let parse_result = if extension == "yaml" || extension == "yml" {
-            yaml_serde::from_str(&content)
+        let parse_result: Result<Self> = if extension == "toml" {
+            toml::from_str(&content).map_err(|e| color_eyre::eyre::eyre!(e))
         } else {
-            serde_json::from_str(&content).or_else(|_| yaml_serde::from_str(&content))
+            serde_json::from_str(&content)
+                .map_err(|e| color_eyre::eyre::eyre!(e))
+                .or_else(|_| toml::from_str(&content).map_err(|e| color_eyre::eyre::eyre!(e)))
         };
 
         parse_result.wrap_err_with(|| format!("Failed to parse config: {}", path.display()))
@@ -145,8 +146,8 @@ impl Config {
 
     pub fn save(&self, path: &Path) -> Result<()> {
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        let content = if extension == "yaml" || extension == "yml" {
-            yaml_serde::to_string(self)?
+        let content = if extension == "toml" {
+            toml::to_string_pretty(self)?
         } else {
             serde_json::to_string_pretty(self)?
         };
@@ -155,5 +156,72 @@ impl Config {
             .wrap_err_with(|| format!("Failed to write config file: {}", path.display()))?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_path(name: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("todo_tree_config_test_{name}_{unique}"))
+    }
+
+    #[test]
+    fn load_from_file_parses_json() {
+        let path = temp_path("json").with_extension("json");
+        fs::write(&path, r#"{"tags": ["TODO", "FIXME"], "ignore_case": true}"#).unwrap();
+
+        let config = Config::load_from_file(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert_eq!(config.tags, vec!["TODO".to_string(), "FIXME".to_string()]);
+        assert!(config.ignore_case);
+    }
+
+    #[test]
+    fn load_from_file_parses_toml() {
+        let path = temp_path("toml").with_extension("toml");
+        fs::write(&path, "tags = [\"TODO\", \"FIXME\"]\nignore_case = true\n").unwrap();
+
+        let config = Config::load_from_file(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert_eq!(config.tags, vec!["TODO".to_string(), "FIXME".to_string()]);
+        assert!(config.ignore_case);
+    }
+
+    #[test]
+    fn save_then_load_round_trips_toml() {
+        let path = temp_path("roundtrip").with_extension("toml");
+        let mut config = Config::new();
+        config.tags = vec!["NOTE".to_string()];
+
+        config.save(&path).unwrap();
+        let loaded = Config::load_from_file(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert_eq!(loaded.tags, vec!["NOTE".to_string()]);
+    }
+
+    #[test]
+    fn load_does_not_recognize_yaml_files() {
+        let dir = temp_path("yaml_dir");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(".todorc.yaml"), "tags:\n  - TODO\n").unwrap();
+
+        let result = Config::load(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert!(
+            result.is_none() || result.unwrap().tags != vec!["TODO".to_string()],
+            ".todorc.yaml must no longer be picked up as a config file"
+        );
     }
 }
