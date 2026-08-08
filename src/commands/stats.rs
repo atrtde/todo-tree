@@ -6,8 +6,8 @@ use crate::{
     scanner::{ScanOptions, Scanner},
     utils::display::{format_duration, priority_to_color},
 };
-use colored::Colorize;
 use color_eyre::eyre::{Result, WrapErr};
+use colored::Colorize;
 use serde_json::json;
 
 pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
