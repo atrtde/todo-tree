@@ -206,6 +206,10 @@ mod tests {
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    // `XDG_CONFIG_HOME` is process-global; serialize every test that touches
+    // it so they don't race each other under parallel test execution.
+    static XDG_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     fn temp_path(name: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -228,6 +232,7 @@ mod tests {
 
     #[test]
     fn config_home_prefers_xdg_config_home_when_set() {
+        let _lock = XDG_ENV_LOCK.lock().unwrap();
         let dir = temp_path("xdg");
 
         // SAFETY: mutating process env is inherently racy under parallel
@@ -286,6 +291,7 @@ mod tests {
 
     #[test]
     fn config_home_falls_back_to_platform_dir_when_xdg_unset() {
+        let _lock = XDG_ENV_LOCK.lock().unwrap();
         let previous = std::env::var_os("XDG_CONFIG_HOME");
         unsafe {
             std::env::remove_var("XDG_CONFIG_HOME");
@@ -303,6 +309,7 @@ mod tests {
 
     #[test]
     fn config_home_falls_back_when_xdg_is_empty() {
+        let _lock = XDG_ENV_LOCK.lock().unwrap();
         let previous = std::env::var_os("XDG_CONFIG_HOME");
         unsafe {
             std::env::set_var("XDG_CONFIG_HOME", "");

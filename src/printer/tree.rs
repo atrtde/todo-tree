@@ -238,7 +238,10 @@ mod tests {
 
         print_tree(&mut buf, &result, &options()).unwrap();
 
-        assert_eq!(String::from_utf8(buf).unwrap().trim(), "No TODO items found.");
+        assert_eq!(
+            String::from_utf8(buf).unwrap().trim(),
+            "No TODO items found."
+        );
     }
 
     #[test]

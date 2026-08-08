@@ -60,3 +60,83 @@ impl Printer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::TodoItem;
+    use std::path::PathBuf;
+
+    fn result_with_one_item() -> ScanResult {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(
+            PathBuf::from("a.rs"),
+            vec![TodoItem {
+                tag: "TODO".to_string(),
+                message: "msg".to_string(),
+                line: 1,
+                column: 1,
+                line_content: None,
+                author: None,
+                priority: crate::core::Priority::Medium,
+            }],
+        );
+        result
+    }
+
+    fn opts(format: OutputFormat, show_summary: bool) -> PrintOptions {
+        PrintOptions {
+            format,
+            colored: false,
+            clickable_links: false,
+            show_summary,
+            ..PrintOptions::default()
+        }
+    }
+
+    #[test]
+    fn print_to_renders_tree_with_summary() {
+        let printer = Printer::new(opts(OutputFormat::Tree, true));
+        let mut buf = Vec::new();
+        printer.print_to(&mut buf, &result_with_one_item()).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("a.rs"));
+        assert!(output.contains("Found 1 TODO items"));
+    }
+
+    #[test]
+    fn print_to_renders_flat_without_summary() {
+        let printer = Printer::new(opts(OutputFormat::Flat, false));
+        let mut buf = Vec::new();
+        printer.print_to(&mut buf, &result_with_one_item()).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("a.rs"));
+        assert!(!output.contains("Found"));
+    }
+
+    #[test]
+    fn print_to_renders_json_and_never_appends_summary() {
+        let printer = Printer::new(opts(OutputFormat::Json, true));
+        let mut buf = Vec::new();
+        printer.print_to(&mut buf, &result_with_one_item()).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.trim_start().starts_with('{'));
+        assert!(!output.contains("Found"));
+    }
+
+    #[test]
+    fn new_disables_global_color_override_when_uncolored() {
+        let _printer = Printer::new(opts(OutputFormat::Tree, false));
+        assert!(!colored::control::SHOULD_COLORIZE.should_colorize());
+        colored::control::unset_override();
+    }
+
+    #[test]
+    fn print_writes_to_stdout_without_error() {
+        let printer = Printer::new(opts(OutputFormat::Flat, false));
+        printer.print(&result_with_one_item()).unwrap();
+    }
+}
