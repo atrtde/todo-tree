@@ -17,14 +17,12 @@
     overlays = [
       rust-overlay.overlays.default
       (final: prev: {
-        rustToolchain = let
-          rust = prev.rust-bin;
-        in
+        rustToolchain =
           if builtins.pathExists ./rust-toolchain.toml
-          then rust.fromRustupToolchainFile ./rust-toolchain.toml
+          then prev.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml
           else if builtins.pathExists ./rust-toolchain
-          then rust.fromRustupToolchainFile ./rust-toolchain
-          else rust.stable.latest.default;
+          then prev.rust-bin.fromRustupToolchainFile ./rust-toolchain
+          else prev.rust-bin.stable.latest.default;
       })
     ];
 
@@ -33,42 +31,18 @@
     forEachSupportedSystem = f:
       nixpkgs.lib.genAttrs supportedSystems (
         system:
-          f {
-            pkgs = import nixpkgs {inherit overlays system;};
-            system = system;
-          }
+          f {pkgs = import nixpkgs {inherit overlays system;};}
       );
 
-    # Patch Cargo.toml content at evaluation time
-    originalCargoToml = builtins.readFile ./Cargo.toml;
-    patchedCargoToml = originalCargoToml;
-
-    # Define the todo-tree package
-    todoTreePackages = forEachSupportedSystem ({
-      pkgs,
-      system,
-    }: let
+    todoTreePackages = forEachSupportedSystem ({pkgs}: let
       naersklib = pkgs.callPackage naersk {};
-
-      # Filter source to exclude the zed extension (since it's a git submodule)
-      filteredSrc = pkgs.lib.cleanSourceWith {
-        src = self;
-      };
-
-      # Use naersk's postUnpack to patch Cargo.toml
       package = naersklib.buildPackage {
         name = "todo-tree";
         pname = "todo-tree";
-        # Read version from the root Cargo.toml (single-crate manifest)
         version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
-        src = filteredSrc;
+        src = self;
         cargoBuildOptions = opts: opts ++ ["--package" "todo-tree"];
         nativeBuildInputs = with pkgs; [pkg-config];
-        postUnpack = ''
-                      cat > $sourceRoot/Cargo.toml << 'EOF'
-          ${patchedCargoToml}
-          EOF
-        '';
         meta = {mainProgram = "todo-tree";};
       };
     in {
@@ -76,11 +50,7 @@
       default = package;
     });
   in {
-    # Development shells
-    devShells = forEachSupportedSystem ({
-      pkgs,
-      system,
-    }: {
+    devShells = forEachSupportedSystem ({pkgs}: {
       default = pkgs.mkShell {
         env.RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
         packages = with pkgs; [
@@ -97,7 +67,6 @@
       };
     });
 
-    # Expose packages so they can be used in systemPackages
     packages = todoTreePackages;
   };
 }
