@@ -45,3 +45,68 @@ impl std::fmt::Display for Priority {
         write!(f, "{}", self.display_name())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_tag_maps_critical_tags() {
+        for tag in ["BUG", "FIXME", "ERROR"] {
+            assert_eq!(Priority::from_tag(tag), Priority::Critical);
+        }
+    }
+
+    #[test]
+    fn from_tag_maps_high_tags() {
+        for tag in ["HACK", "WARN", "WARNING", "FIX"] {
+            assert_eq!(Priority::from_tag(tag), Priority::High);
+        }
+    }
+
+    #[test]
+    fn from_tag_maps_medium_tags() {
+        for tag in ["TODO", "WIP", "MAYBE"] {
+            assert_eq!(Priority::from_tag(tag), Priority::Medium);
+        }
+    }
+
+    #[test]
+    fn from_tag_maps_low_tags() {
+        for tag in ["NOTE", "XXX", "INFO", "DOCS", "PERF", "TEST", "IDEA"] {
+            assert_eq!(Priority::from_tag(tag), Priority::Low);
+        }
+    }
+
+    #[test]
+    fn from_tag_is_case_insensitive() {
+        assert_eq!(Priority::from_tag("bug"), Priority::Critical);
+        assert_eq!(Priority::from_tag("Fixme"), Priority::Critical);
+    }
+
+    #[test]
+    fn from_tag_defaults_unknown_to_medium() {
+        assert_eq!(Priority::from_tag("CUSTOM"), Priority::Medium);
+    }
+
+    #[test]
+    fn display_name_matches_variant() {
+        assert_eq!(Priority::Critical.display_name(), "Critical");
+        assert_eq!(Priority::High.display_name(), "High");
+        assert_eq!(Priority::Medium.display_name(), "Medium");
+        assert_eq!(Priority::Low.display_name(), "Low");
+    }
+
+    #[test]
+    fn display_uses_display_name() {
+        assert_eq!(Priority::Critical.to_string(), "Critical");
+        assert_eq!(format!("{}", Priority::Low), "Low");
+    }
+
+    #[test]
+    fn ordering_ranks_by_severity() {
+        assert!(Priority::Low < Priority::Medium);
+        assert!(Priority::Medium < Priority::High);
+        assert!(Priority::High < Priority::Critical);
+    }
+}

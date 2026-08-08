@@ -118,3 +118,28 @@ pub fn find_tag(name: &str) -> Option<&'static TagDefinition> {
         .iter()
         .find(|t| t.name.eq_ignore_ascii_case(name))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_tag_names_matches_default_tags() {
+        let names = default_tag_names();
+        assert_eq!(names.len(), DEFAULT_TAGS.len());
+        assert_eq!(names[0], "TODO");
+        assert!(names.contains(&"FIXME".to_string()));
+    }
+
+    #[test]
+    fn find_tag_is_case_insensitive() {
+        let tag = find_tag("todo").expect("TODO should be found");
+        assert_eq!(tag.name, "TODO");
+        assert_eq!(tag.priority, Priority::Medium);
+    }
+
+    #[test]
+    fn find_tag_returns_none_for_unknown_tag() {
+        assert!(find_tag("NOT_A_REAL_TAG").is_none());
+    }
+}

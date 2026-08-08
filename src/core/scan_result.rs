@@ -150,3 +150,154 @@ impl ScanResult {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::Priority;
+
+    fn item(tag: &str, line: usize) -> TodoItem {
+        TodoItem {
+            tag: tag.to_string(),
+            message: "msg".to_string(),
+            line,
+            column: 1,
+            line_content: None,
+            author: None,
+            priority: Priority::from_tag(tag),
+        }
+    }
+
+    #[test]
+    fn new_is_empty() {
+        let result = ScanResult::new(PathBuf::from("/tmp"));
+        assert!(result.is_empty());
+        assert_eq!(result.root, Some(PathBuf::from("/tmp")));
+        assert!(result.files.is_none());
+    }
+
+    #[test]
+    fn add_file_updates_summary_and_map() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(
+            PathBuf::from("a.rs"),
+            vec![item("TODO", 1), item("FIXME", 2)],
+        );
+
+        assert!(!result.is_empty());
+        assert_eq!(result.summary.files_scanned, 1);
+        assert_eq!(result.summary.files_with_todos, 1);
+        assert_eq!(result.summary.total_count, 2);
+        assert_eq!(result.summary.tag_counts.get("TODO"), Some(&1));
+        assert_eq!(result.summary.tag_counts.get("FIXME"), Some(&1));
+    }
+
+    #[test]
+    fn add_file_with_no_items_counts_scanned_but_not_stored() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("empty.rs"), vec![]);
+
+        assert_eq!(result.summary.files_scanned, 1);
+        assert_eq!(result.summary.files_with_todos, 0);
+        assert!(result.files_map.is_empty());
+    }
+
+    #[test]
+    fn all_items_flattens_files_map() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("a.rs"), vec![item("TODO", 1)]);
+        result.add_file(PathBuf::from("b.rs"), vec![item("FIXME", 2)]);
+
+        let items = result.all_items();
+        assert_eq!(items.len(), 2);
+    }
+
+    #[test]
+    fn sorted_files_orders_by_path() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("z.rs"), vec![item("TODO", 1)]);
+        result.add_file(PathBuf::from("a.rs"), vec![item("TODO", 1)]);
+
+        let files = result.sorted_files();
+        assert_eq!(files[0].0, &PathBuf::from("a.rs"));
+        assert_eq!(files[1].0, &PathBuf::from("z.rs"));
+    }
+
+    #[test]
+    fn filter_by_tag_keeps_only_matching_items_case_insensitively() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(
+            PathBuf::from("a.rs"),
+            vec![item("TODO", 1), item("FIXME", 2)],
+        );
+
+        let filtered = result.filter_by_tag("todo");
+        assert_eq!(filtered.summary.total_count, 1);
+        assert_eq!(filtered.all_items()[0].1.tag, "TODO");
+    }
+
+    #[test]
+    fn filter_by_tag_drops_files_with_no_matches() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("a.rs"), vec![item("FIXME", 1)]);
+
+        let filtered = result.filter_by_tag("todo");
+        assert!(filtered.is_empty());
+    }
+
+    #[test]
+    fn to_json_format_populates_files_and_clears_map() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("a.rs"), vec![item("TODO", 1)]);
+
+        let json = result.to_json_format();
+        assert!(json.files_map.is_empty());
+        assert_eq!(json.files.as_ref().unwrap().len(), 1);
+        assert_eq!(json.files.as_ref().unwrap()[0].path, "a.rs");
+    }
+
+    #[test]
+    fn from_json_round_trips_into_files_form() {
+        let files = vec![FileResult {
+            path: "a.rs".to_string(),
+            items: vec![item("TODO", 1)],
+        }];
+        let summary = ScanSummary {
+            total_count: 1,
+            files_with_todos: 1,
+            files_scanned: 1,
+            tag_counts: HashMap::new(),
+            duration_ms: 5,
+        };
+
+        let result = ScanResult::from_json(files, summary);
+        assert!(result.root.is_none());
+        assert_eq!(result.get_files().len(), 1);
+    }
+
+    #[test]
+    fn get_files_uses_live_map_when_files_is_none() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("a.rs"), vec![item("TODO", 1)]);
+
+        assert_eq!(result.get_files().len(), 1);
+    }
+
+    #[test]
+    fn get_files_uses_files_directly_when_present() {
+        let files = vec![FileResult {
+            path: "a.rs".to_string(),
+            items: vec![],
+        }];
+        let summary = ScanSummary {
+            total_count: 0,
+            files_with_todos: 0,
+            files_scanned: 0,
+            tag_counts: HashMap::new(),
+            duration_ms: 0,
+        };
+        let result = ScanResult::from_json(files, summary);
+
+        assert_eq!(result.get_files().len(), 1);
+    }
+}

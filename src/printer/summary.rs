@@ -45,3 +45,69 @@ pub fn print_summary<W: Write>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::TodoItem;
+    use std::path::PathBuf;
+
+    fn item(tag: &str) -> TodoItem {
+        TodoItem {
+            tag: tag.to_string(),
+            message: "msg".to_string(),
+            line: 1,
+            column: 1,
+            line_content: None,
+            author: None,
+            priority: crate::core::Priority::from_tag(tag),
+        }
+    }
+
+    #[test]
+    fn print_summary_uncolored_reports_counts() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("a.rs"), vec![item("TODO"), item("FIXME")]);
+
+        let opts = PrintOptions {
+            colored: false,
+            ..PrintOptions::default()
+        };
+        let mut buf = Vec::new();
+        print_summary(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("Found 2 TODO items in 1 files"));
+        assert!(output.contains("TODO: 1"));
+        assert!(output.contains("FIXME: 1"));
+    }
+
+    #[test]
+    fn print_summary_colored_variant() {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(PathBuf::from("a.rs"), vec![item("TODO")]);
+
+        let opts = PrintOptions {
+            colored: true,
+            ..PrintOptions::default()
+        };
+        let mut buf = Vec::new();
+        print_summary(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("Found 1 TODO items"));
+        assert!(output.contains("TODO"));
+    }
+
+    #[test]
+    fn print_summary_omits_breakdown_line_when_no_tags() {
+        let result = ScanResult::new(PathBuf::from("."));
+        let opts = PrintOptions::default();
+        let mut buf = Vec::new();
+
+        print_summary(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert_eq!(output.lines().count(), 1);
+    }
+}

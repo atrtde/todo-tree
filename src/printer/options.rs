@@ -49,3 +49,27 @@ impl Default for PrintOptions {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_options_use_tree_format_and_color() {
+        let options = PrintOptions::default();
+        assert_eq!(options.format, OutputFormat::Tree);
+        assert!(options.colored);
+        assert!(options.show_line_numbers);
+        assert!(!options.full_paths);
+        assert!(options.clickable_links);
+        assert!(options.base_path.is_none());
+        assert!(options.show_summary);
+        assert!(!options.group_by_tag);
+    }
+
+    #[test]
+    fn output_format_equality() {
+        assert_eq!(OutputFormat::Tree, OutputFormat::Tree);
+        assert_ne!(OutputFormat::Tree, OutputFormat::Json);
+    }
+}

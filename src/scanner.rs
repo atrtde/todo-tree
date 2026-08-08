@@ -140,3 +140,180 @@ impl Scanner {
             .wrap_err_with(|| format!("Failed to parse file: {}", path.display()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::TodoParser;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("todo_tree_scanner_test_{name}_{unique}"));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn parser() -> TodoParser {
+        TodoParser::new(&["TODO".to_string(), "FIXME".to_string()], true)
+    }
+
+    fn scanner(options: ScanOptions) -> Scanner {
+        Scanner::new(parser(), options)
+    }
+
+    #[test]
+    fn default_options_respect_gitignore_and_no_limits() {
+        let options = ScanOptions::default();
+        assert!(options.respect_gitignore);
+        assert_eq!(options.max_depth, 0);
+        assert_eq!(options.threads, 0);
+        assert!(!options.hidden);
+        assert!(!options.follow_links);
+        assert!(options.include.is_empty());
+        assert!(options.exclude.is_empty());
+    }
+
+    #[test]
+    fn scan_finds_todos_and_counts_all_files() {
+        let dir = temp_dir("basic");
+        fs::write(dir.join("a.rs"), "// TODO: fix this\nfn main() {}\n").unwrap();
+        fs::write(dir.join("b.rs"), "fn main() {}\n").unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+        assert_eq!(result.summary.files_with_todos, 1);
+        assert_eq!(result.summary.files_scanned, 2);
+    }
+
+    #[test]
+    fn scan_errors_on_nonexistent_path() {
+        let dir =
+            std::env::temp_dir().join("todo_tree_scanner_test_missing_dir_definitely_not_here");
+        let result = scanner(ScanOptions::default()).scan(&dir);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn scan_respects_include_patterns() {
+        let dir = temp_dir("include");
+        fs::write(dir.join("a.rs"), "// TODO: rust file\n").unwrap();
+        fs::write(dir.join("b.py"), "# TODO: python file\n").unwrap();
+
+        let options = ScanOptions {
+            include: vec!["*.rs".to_string()],
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_respects_exclude_patterns() {
+        let dir = temp_dir("exclude");
+        fs::write(dir.join("a.rs"), "// TODO: keep\n").unwrap();
+        fs::write(dir.join("b.rs"), "// TODO: drop\n").unwrap();
+
+        let options = ScanOptions {
+            exclude: vec!["b.rs".to_string()],
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_errors_on_invalid_include_pattern() {
+        let dir = temp_dir("bad_pattern");
+
+        let options = ScanOptions {
+            include: vec!["[".to_string()],
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir);
+        let _ = fs::remove_dir_all(&dir);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn scan_skips_hidden_files_by_default() {
+        let dir = temp_dir("hidden");
+        fs::write(dir.join(".hidden.rs"), "// TODO: hidden\n").unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 0);
+    }
+
+    #[test]
+    fn scan_includes_hidden_files_when_enabled() {
+        let dir = temp_dir("hidden_enabled");
+        fs::write(dir.join(".hidden.rs"), "// TODO: hidden\n").unwrap();
+
+        let options = ScanOptions {
+            hidden: true,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_respects_max_depth() {
+        let dir = temp_dir("depth");
+        let nested = dir.join("nested");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(dir.join("top.rs"), "// TODO: top\n").unwrap();
+        fs::write(nested.join("deep.rs"), "// TODO: deep\n").unwrap();
+
+        let options = ScanOptions {
+            max_depth: 1,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_counts_unparseable_files_as_scanned() {
+        let dir = temp_dir("bad_utf8");
+        fs::write(dir.join("bad.rs"), [0xFF, 0xFE, 0xFD]).unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.files_scanned, 1);
+        assert_eq!(result.summary.total_count, 0);
+    }
+
+    #[test]
+    fn scan_uses_custom_thread_count() {
+        let dir = temp_dir("threads");
+        fs::write(dir.join("a.rs"), "// TODO: threaded\n").unwrap();
+
+        let options = ScanOptions {
+            threads: 2,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+}

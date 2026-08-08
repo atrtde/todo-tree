@@ -196,3 +196,114 @@ fn print_tree_item<W: Write>(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(tag: &str, line: usize, author: Option<&str>) -> TodoItem {
+        TodoItem {
+            tag: tag.to_string(),
+            message: "msg".to_string(),
+            line,
+            column: 1,
+            line_content: None,
+            author: author.map(str::to_string),
+            priority: crate::core::Priority::from_tag(tag),
+        }
+    }
+
+    fn options() -> PrintOptions {
+        PrintOptions {
+            clickable_links: false,
+            colored: false,
+            ..PrintOptions::default()
+        }
+    }
+
+    fn two_file_result() -> ScanResult {
+        let mut result = ScanResult::new(PathBuf::from("."));
+        result.add_file(
+            PathBuf::from("a.rs"),
+            vec![item("TODO", 1, None), item("FIXME", 2, Some("bob"))],
+        );
+        result.add_file(PathBuf::from("b.rs"), vec![item("NOTE", 1, None)]);
+        result
+    }
+
+    #[test]
+    fn print_tree_reports_empty_result() {
+        let result = ScanResult::new(PathBuf::from("."));
+        let mut buf = Vec::new();
+
+        print_tree(&mut buf, &result, &options()).unwrap();
+
+        assert_eq!(String::from_utf8(buf).unwrap().trim(), "No TODO items found.");
+    }
+
+    #[test]
+    fn print_tree_by_file_groups_and_orders_by_path() {
+        let result = two_file_result();
+        let mut buf = Vec::new();
+
+        print_tree(&mut buf, &result, &options()).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        let a_pos = output.find("a.rs").unwrap();
+        let b_pos = output.find("b.rs").unwrap();
+        assert!(a_pos < b_pos);
+        assert!(output.contains("TODO"));
+        assert!(output.contains("FIXME"));
+        assert!(output.contains("(bob)"));
+    }
+
+    #[test]
+    fn print_tree_by_file_colored_variant_with_author() {
+        let result = two_file_result();
+        let opts = PrintOptions {
+            colored: true,
+            clickable_links: true,
+            ..PrintOptions::default()
+        };
+        let mut buf = Vec::new();
+
+        print_tree(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("msg"));
+    }
+
+    #[test]
+    fn print_tree_by_tag_groups_items_under_tag_headers() {
+        let result = two_file_result();
+        let opts = PrintOptions {
+            group_by_tag: true,
+            ..options()
+        };
+        let mut buf = Vec::new();
+
+        print_tree(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("FIXME (1)"));
+        assert!(output.contains("NOTE (1)"));
+        assert!(output.contains("TODO (1)"));
+    }
+
+    #[test]
+    fn print_tree_by_tag_colored_variant() {
+        let result = two_file_result();
+        let opts = PrintOptions {
+            group_by_tag: true,
+            colored: true,
+            clickable_links: true,
+            ..PrintOptions::default()
+        };
+        let mut buf = Vec::new();
+
+        print_tree(&mut buf, &result, &opts).unwrap();
+        let output = String::from_utf8(buf).unwrap();
+
+        assert!(output.contains("msg"));
+    }
+}

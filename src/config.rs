@@ -283,4 +283,169 @@ mod tests {
             ".todorc.yaml must no longer be picked up as a config file"
         );
     }
+
+    #[test]
+    fn config_home_falls_back_to_platform_dir_when_xdg_unset() {
+        let previous = std::env::var_os("XDG_CONFIG_HOME");
+        unsafe {
+            std::env::remove_var("XDG_CONFIG_HOME");
+        }
+        let resolved = config_home();
+        unsafe {
+            match &previous {
+                Some(v) => std::env::set_var("XDG_CONFIG_HOME", v),
+                None => std::env::remove_var("XDG_CONFIG_HOME"),
+            }
+        }
+
+        assert_eq!(resolved, dirs::config_dir());
+    }
+
+    #[test]
+    fn config_home_falls_back_when_xdg_is_empty() {
+        let previous = std::env::var_os("XDG_CONFIG_HOME");
+        unsafe {
+            std::env::set_var("XDG_CONFIG_HOME", "");
+        }
+        let resolved = config_home();
+        unsafe {
+            match &previous {
+                Some(v) => std::env::set_var("XDG_CONFIG_HOME", v),
+                None => std::env::remove_var("XDG_CONFIG_HOME"),
+            }
+        }
+
+        assert_eq!(resolved, dirs::config_dir());
+    }
+
+    #[test]
+    fn new_returns_strict_defaults() {
+        let config = Config::new();
+        assert_eq!(config.tags, default_tag_names());
+        assert!(config.include.is_empty());
+        assert!(config.exclude.is_empty());
+        assert!(!config.json);
+        assert!(!config.flat);
+        assert!(!config.no_color);
+        assert!(config.custom_pattern.is_none());
+        assert!(!config.ignore_case);
+        assert!(config.require_colon);
+    }
+
+    #[test]
+    fn load_finds_exact_todorc_filename() {
+        let dir = temp_path("exact_todorc");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join(".todorc"), r#"{"tags": ["NOTE"]}"#).unwrap();
+
+        let config = Config::load(&dir).unwrap().expect("expected a config");
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(config.tags, vec!["NOTE".to_string()]);
+    }
+
+    #[test]
+    fn load_recurses_into_parent_directories() {
+        let dir = temp_path("parent_recursion");
+        let child = dir.join("child");
+        fs::create_dir_all(&child).unwrap();
+        fs::write(dir.join(".todorc.json"), r#"{"tags": ["PARENT"]}"#).unwrap();
+
+        let config = Config::load(&child).unwrap().expect("expected a config");
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(config.tags, vec!["PARENT".to_string()]);
+    }
+
+    #[test]
+    fn load_from_file_errors_on_missing_file() {
+        let path = temp_path("missing").with_extension("json");
+        assert!(Config::load_from_file(&path).is_err());
+    }
+
+    #[test]
+    fn load_from_file_errors_on_unparseable_content() {
+        let path = temp_path("garbage").with_extension("toml");
+        fs::write(&path, "not: valid { toml or json").unwrap();
+
+        let result = Config::load_from_file(&path);
+        let _ = fs::remove_file(&path);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn save_writes_json_for_non_toml_extension() {
+        let path = temp_path("save_json").with_extension("json");
+        let config = Config::new();
+
+        config.save(&path).unwrap();
+        let content = fs::read_to_string(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert!(content.trim_start().starts_with('{'));
+    }
+
+    #[test]
+    fn merge_with_cli_applies_every_override() {
+        let mut config = Config::new();
+        config.exclude = vec!["existing/**".to_string()];
+
+        config.merge_with_cli(CliOptions {
+            tags: Some(vec!["CUSTOM".to_string()]),
+            include: Some(vec!["*.rs".to_string()]),
+            exclude: Some(vec!["extra/**".to_string()]),
+            json: true,
+            flat: true,
+            no_color: true,
+            ignore_case: true,
+            no_require_colon: true,
+        });
+
+        assert_eq!(config.tags, vec!["CUSTOM".to_string()]);
+        assert_eq!(config.include, vec!["*.rs".to_string()]);
+        assert_eq!(
+            config.exclude,
+            vec!["existing/**".to_string(), "extra/**".to_string()]
+        );
+        assert!(config.json);
+        assert!(config.flat);
+        assert!(config.no_color);
+        assert!(config.ignore_case);
+        assert!(!config.require_colon);
+    }
+
+    #[test]
+    fn merge_with_cli_is_a_no_op_with_default_options() {
+        let config_before = Config::new();
+        let mut config = Config::new();
+
+        config.merge_with_cli(CliOptions::default());
+
+        assert_eq!(config.tags, config_before.tags);
+        assert_eq!(config.include, config_before.include);
+        assert_eq!(config.exclude, config_before.exclude);
+        assert_eq!(config.json, config_before.json);
+        assert_eq!(config.flat, config_before.flat);
+        assert_eq!(config.no_color, config_before.no_color);
+        assert_eq!(config.ignore_case, config_before.ignore_case);
+        assert_eq!(config.require_colon, config_before.require_colon);
+    }
+
+    #[test]
+    fn merge_with_cli_ignores_empty_tag_and_include_overrides() {
+        let mut config = Config::new();
+        let original_tags = config.tags.clone();
+
+        config.merge_with_cli(CliOptions {
+            tags: Some(vec![]),
+            include: Some(vec![]),
+            exclude: Some(vec![]),
+            ..Default::default()
+        });
+
+        assert_eq!(config.tags, original_tags);
+        assert!(config.include.is_empty());
+        assert!(config.exclude.is_empty());
+    }
 }

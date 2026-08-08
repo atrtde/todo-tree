@@ -34,3 +34,30 @@ impl TodoItem {
             .unwrap_or_default()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn item(author: Option<&str>) -> TodoItem {
+        TodoItem {
+            tag: "TODO".to_string(),
+            message: "test".to_string(),
+            line: 1,
+            column: 1,
+            line_content: None,
+            author: author.map(str::to_string),
+            priority: Priority::Medium,
+        }
+    }
+
+    #[test]
+    fn format_author_wraps_in_parens_when_present() {
+        assert_eq!(item(Some("alice")).format_author(), "(alice)");
+    }
+
+    #[test]
+    fn format_author_is_empty_when_absent() {
+        assert_eq!(item(None).format_author(), "");
+    }
+}
