@@ -1,4 +1,4 @@
-use crate::cli::{WorkflowArgs, WorkflowCommands, WorkflowInitArgs};
+use crate::app::cli::{WorkflowArgs, WorkflowCommands, WorkflowInitArgs};
 use color_eyre::eyre::{Result, WrapErr, eyre};
 use std::path::{Path, PathBuf};
 

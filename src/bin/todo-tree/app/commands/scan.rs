@@ -1,13 +1,11 @@
 use super::{load_config, sort_results};
-use crate::{
-    cli,
-    config::CliOptions,
-    parser::TodoParser,
-    printer::{OutputFormat, PrintOptions, Printer},
-    scanner::{ScanOptions, Scanner},
-};
+use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
+use todo_tree::config::CliOptions;
+use todo_tree::parser::TodoParser;
+use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
+use todo_tree::scanner::{ScanOptions, Scanner};
 
 pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));

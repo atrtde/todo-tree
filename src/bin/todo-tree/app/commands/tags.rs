@@ -1,8 +1,9 @@
 use super::load_config;
-use crate::core::Priority;
-use crate::core::tags::default_tag_names;
-use crate::{cli, utils::display::priority_to_color};
+use crate::app::cli;
 use color_eyre::eyre::Result;
+use todo_tree::core::Priority;
+use todo_tree::core::tags::default_tag_names;
+use todo_tree::utils::display::priority_to_color;
 
 pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let current_dir = std::env::current_dir()?;

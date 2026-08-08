@@ -1,14 +1,12 @@
 use super::load_config;
-use crate::core::Priority;
-use crate::{
-    cli,
-    parser::TodoParser,
-    scanner::{ScanOptions, Scanner},
-    utils::display::{format_duration, priority_to_color},
-};
+use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
 use serde_json::json;
+use todo_tree::core::Priority;
+use todo_tree::parser::TodoParser;
+use todo_tree::scanner::{ScanOptions, Scanner};
+use todo_tree::utils::display::{format_duration, priority_to_color};
 
 pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args
