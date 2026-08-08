@@ -16,33 +16,55 @@ fn config_home() -> Option<PathBuf> {
         .or_else(dirs::config_dir)
 }
 
+/// CLI-provided overrides to merge into a loaded [`Config`].
 #[derive(Debug, Clone, Default)]
 pub struct CliOptions {
+    /// Tags to search for, overriding the config file's list if present.
     pub tags: Option<Vec<String>>,
+    /// Include patterns, overriding the config file's list if present.
     pub include: Option<Vec<String>>,
+    /// Exclude patterns, appended to the config file's list if present.
     pub exclude: Option<Vec<String>>,
+    /// Forces JSON output on.
     pub json: bool,
+    /// Forces flat output on.
     pub flat: bool,
+    /// Forces colored output off.
     pub no_color: bool,
+    /// Forces case-insensitive tag matching on.
     pub ignore_case: bool,
+    /// Forces the trailing-colon requirement off.
     pub no_require_colon: bool,
 }
 
+/// A loaded (or default) `.todorc` configuration.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct Config {
+    /// Tags to search for.
     pub tags: Vec<String>,
+    /// Glob patterns to include.
     pub include: Vec<String>,
+    /// Glob patterns to exclude.
     pub exclude: Vec<String>,
+    /// Whether to default to JSON output.
     pub json: bool,
+    /// Whether to default to flat output.
     pub flat: bool,
+    /// Whether to default to uncolored output.
     pub no_color: bool,
+    /// An optional custom tag-matching regex, in place of
+    /// [`crate::parser::DEFAULT_REGEX`].
     pub custom_pattern: Option<String>,
+    /// Whether tag matching is case-insensitive.
     pub ignore_case: bool,
+    /// Whether a trailing colon is required after the tag.
     pub require_colon: bool,
 }
 
 impl Config {
+    /// Builds a config with the default tag set and strict matching
+    /// (case-sensitive, colon required).
     pub fn new() -> Self {
         Self {
             tags: default_tag_names(),
@@ -103,6 +125,9 @@ impl Config {
         Ok(None)
     }
 
+    /// Loads and parses a specific config file, auto-detecting JSON vs.
+    /// TOML from its extension (falling back to JSON-then-TOML for
+    /// extensionless files like `.todorc`).
     pub fn load_from_file(path: &Path) -> Result<Self> {
         let content = std::fs::read_to_string(path)
             .wrap_err_with(|| format!("Failed to read config file: {}", path.display()))?;
@@ -119,6 +144,7 @@ impl Config {
         parse_result.wrap_err_with(|| format!("Failed to parse config: {}", path.display()))
     }
 
+    /// Merges CLI-provided overrides into this config in place.
     pub fn merge_with_cli(&mut self, cli: CliOptions) {
         if let Some(tags) = cli.tags
             && !tags.is_empty()
@@ -157,6 +183,8 @@ impl Config {
         }
     }
 
+    /// Writes this config to `path`, choosing TOML or JSON based on its
+    /// extension (JSON if unrecognized).
     pub fn save(&self, path: &Path) -> Result<()> {
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let content = if extension == "toml" {
