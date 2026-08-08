@@ -41,7 +41,6 @@
         pname = "todo-tree";
         version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
         src = self;
-        cargoBuildOptions = opts: opts ++ ["--package" "todo-tree"];
         nativeBuildInputs = with pkgs; [pkg-config];
         meta = {mainProgram = "todo-tree";};
       };
