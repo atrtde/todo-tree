@@ -1,88 +1,11 @@
-//! Scan result and TODO item types.
+//! The result of scanning a directory tree.
 
-use super::priority::Priority;
+use super::file_result::FileResult;
+use super::summary::ScanSummary;
+use super::todo_item::TodoItem;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-/// A single matched TODO-style comment.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct TodoItem {
-    /// The tag that matched, e.g. `"TODO"` or `"FIXME"`.
-    pub tag: String,
-    /// The comment text following the tag.
-    pub message: String,
-    /// 1-based line number the tag was found on.
-    pub line: usize,
-    /// 1-based column the tag starts at.
-    pub column: usize,
-    /// The full source line the tag was found on, if captured.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub line_content: Option<String>,
-    /// The optional author/assignee captured from `TAG(name): ...` syntax.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub author: Option<String>,
-    /// The priority derived from the tag.
-    pub priority: Priority,
-}
-
-impl TodoItem {
-    /// Formats the author as `"(name)"`, or an empty string if none was
-    /// captured.
-    pub fn format_author(&self) -> String {
-        self.author
-            .as_ref()
-            .map(|a| format!("({})", a))
-            .unwrap_or_default()
-    }
-}
-
-/// TODO items found in a single file.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct FileResult {
-    /// The file's path, as a display string.
-    pub path: String,
-    /// The TODO items found in the file.
-    pub items: Vec<TodoItem>,
-}
-
-/// Aggregate counts for a scan.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ScanSummary {
-    /// Total number of TODO items found across all files.
-    pub total_count: usize,
-    /// Number of files that contained at least one TODO item.
-    pub files_with_todos: usize,
-    /// Total number of files scanned.
-    pub files_scanned: usize,
-    /// Number of items found per tag.
-    pub tag_counts: HashMap<String, usize>,
-    /// How long the scan took, in milliseconds.
-    #[serde(default)]
-    pub duration_ms: u128,
-}
-
-impl ScanSummary {
-    /// Average number of TODO items per file with at least one TODO item;
-    /// `0.0` if none were found.
-    pub fn avg_items_per_file(&self) -> f64 {
-        if self.files_with_todos > 0 {
-            self.total_count as f64 / self.files_with_todos as f64
-        } else {
-            0.0
-        }
-    }
-
-    /// Percentage `count` represents out of `total_count`; `0.0` if
-    /// `total_count` is zero.
-    pub fn tag_percentage(&self, count: usize) -> f64 {
-        if self.total_count > 0 {
-            (count as f64 / self.total_count as f64) * 100.0
-        } else {
-            0.0
-        }
-    }
-}
 
 /// The result of scanning a directory tree for TODO items.
 #[derive(Debug, Clone, Serialize, Deserialize)]
