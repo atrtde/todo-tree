@@ -42,16 +42,20 @@ impl Default for ScanOptions {
     }
 }
 
+/// Walks a directory tree, parsing every file with a [`TodoParser`].
 pub struct Scanner {
     parser: TodoParser,
     options: ScanOptions,
 }
 
 impl Scanner {
+    /// Creates a scanner using `parser` and `options`.
     pub fn new(parser: TodoParser, options: ScanOptions) -> Self {
         Self { parser, options }
     }
 
+    /// Walks `root`, parsing every matching file and collecting the
+    /// results.
     pub fn scan(&self, root: &Path) -> Result<ScanResult> {
         let start = Instant::now();
         let root = root

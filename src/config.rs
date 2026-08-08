@@ -1,3 +1,6 @@
+//! `.todorc` configuration file discovery, parsing, and merging with CLI
+//! overrides.
+
 use crate::core::tags::default_tag_names;
 use color_eyre::eyre::{Result, WrapErr};
 use serde::{Deserialize, Serialize};
