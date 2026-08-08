@@ -1,4 +1,7 @@
-fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-    todo_tree::run()
+//! `todo-tree` binary entry point.
+
+mod app;
+
+fn main() -> color_eyre::eyre::Result<()> {
+    app::run()
 }

@@ -14,7 +14,7 @@ pub struct Cli {
     pub global: GlobalOptions,
 
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Option<Command>,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -35,7 +35,7 @@ pub struct GlobalOptions {
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum Commands {
+pub enum Command {
     #[command(visible_alias = "s", about = "Scan files and print TODO matches")]
     Scan(ScanArgs),
     #[command(visible_alias = "l", visible_alias = "ls", about = "List TODO matches")]
@@ -246,10 +246,10 @@ pub enum ConfigFormat {
 }
 
 impl Cli {
-    pub fn get_command(&self) -> Commands {
+    pub fn get_command(&self) -> Command {
         self.command
             .clone()
-            .unwrap_or_else(|| Commands::Scan(ScanArgs::default()))
+            .unwrap_or_else(|| Command::Scan(ScanArgs::default()))
     }
 }
 
