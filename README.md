@@ -214,9 +214,9 @@ Generate a workflow file at `.github/workflows/todo-tree.yml`:
 tt workflow init
 ```
 
-This creates a pull request workflow that checks out the repository and runs `alexandretrotel/todo-tree-action@v1.0.3` by default.
+This creates a pull request workflow that checks out the repository and runs `alexandretrotel/todo-tree-action@main` by default.
 
-Use `--force` to overwrite an existing workflow, `--path` to write the template elsewhere, or `--action` to override the generated action ref:
+Use `--force` to overwrite an existing workflow, `--path` to write the template elsewhere, or `--action` to override the generated action ref (e.g. to pin a specific release instead of `main`):
 
 ```bash
 tt workflow init --force

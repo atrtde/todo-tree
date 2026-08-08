@@ -3,7 +3,7 @@ use color_eyre::eyre::{Result, WrapErr, eyre};
 use std::path::{Path, PathBuf};
 
 const DEFAULT_WORKFLOW_PATH: &str = ".github/workflows/todo-tree.yml";
-const ACTION_VERSION: &str = "v1.0.3";
+const ACTION_REF: &str = "main";
 
 pub fn run(args: WorkflowArgs) -> Result<()> {
     match args.command {
@@ -27,7 +27,7 @@ fn init(args: WorkflowInitArgs) -> Result<()> {
 }
 
 fn default_action_ref() -> String {
-    format!("alexandretrotel/todo-tree-action@{ACTION_VERSION}")
+    format!("alexandretrotel/todo-tree-action@{ACTION_REF}")
 }
 
 fn validate_action_ref(action: &str) -> Result<()> {
