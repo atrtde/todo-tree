@@ -20,9 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reorganized `src/` so the `todo_tree` library and the `todo-tree`/`tt` binaries live in clearly separated trees (`src/` for the library, `src/bin/todo-tree/` and `src/bin/tt/` for the binaries). `tt` shares `todo-tree`'s CLI implementation via `#[path]`, with no runtime indirection.
 - Bumped all dependencies to their latest stable versions, pinned at `major.minor` only.
 - `tt workflow init` now defaults to `alexandretrotel/todo-tree-action@main` instead of a pinned release tag; pass `--action owner/repo@ref` to pin a specific version.
+- `Scanner::scan` now walks in parallel (`ignore::WalkBuilder::build_parallel`) across `ScanOptions::threads` workers instead of walking single-threaded; the `threads` option now does what it always claimed to.
+- `Scanner` caches its `ignore::Overrides` after the first `scan()` call instead of rebuilding them on every call, since `tt watch` reuses one `Scanner` across many re-scans.
+- `TodoParser::parse_file` does a cheap `memchr`-based byte scan for configured tags before validating UTF-8 and running the regex pass, skipping that cost entirely for files that can't match (lockfiles, bundled JS, binaries).
 
 ### Added
 - `documentation = "https://docs.rs/todo-tree"` in `Cargo.toml`; the crate now builds clean under `#![warn(missing_docs)]` with full public API documentation.
+- `tt watch` (alias `tt w`) subcommand: re-scans and reprints on file changes, using `notify` + `notify-debouncer-mini` to coalesce bursts (`--debounce-ms` to tune, default 250ms). File-system events are filtered through the same `.gitignore`/`--include`/`--exclude` rules as a normal scan before triggering a re-scan, so changes under ignored directories (`target/`, `node_modules/`, ...) are skipped.
 
 ### CI
 - Rewrote `ci.yml` and added a dedicated `build-binaries.yml`, matching the workflow structure used in `dotfiles-manager`/`feedyourai`.

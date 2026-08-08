@@ -21,6 +21,7 @@ pub fn run() -> Result<()> {
 
     match cli.get_command() {
         Command::Scan(args) => commands::scan::run(args, &cli.global),
+        Command::Watch(args) => commands::watch::run(args, &cli.global),
         Command::List(args) => commands::list::run(args, &cli.global),
         Command::Tags(args) => commands::tags::run(args, &cli.global),
         Command::Init(args) => commands::init::run(args),

@@ -3,9 +3,11 @@
 use crate::core::{ScanResult, TodoItem};
 use crate::parser::TodoParser;
 use color_eyre::eyre::{Result, WrapErr};
-use ignore::WalkBuilder;
-use ignore::overrides::OverrideBuilder;
-use std::path::Path;
+use ignore::overrides::{Override, OverrideBuilder};
+use ignore::{WalkBuilder, WalkState};
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::sync::mpsc;
 use std::time::Instant;
 
 /// Options controlling how [`Scanner`] walks a directory tree.
@@ -43,19 +45,30 @@ impl Default for ScanOptions {
 }
 
 /// Walks a directory tree, parsing every file with a [`TodoParser`].
+///
+/// A `Scanner` is cheap to reuse across repeated calls to [`Scanner::scan`]
+/// (e.g. `tt watch` re-scanning on every file change): the include/exclude
+/// [`Override`] set is built once, on the first call, and cached for the
+/// life of the `Scanner`.
 pub struct Scanner {
     parser: TodoParser,
     options: ScanOptions,
+    overrides: OnceLock<Override>,
 }
 
 impl Scanner {
     /// Creates a scanner using `parser` and `options`.
     pub fn new(parser: TodoParser, options: ScanOptions) -> Self {
-        Self { parser, options }
+        Self {
+            parser,
+            options,
+            overrides: OnceLock::new(),
+        }
     }
 
     /// Walks `root`, parsing every matching file and collecting the
-    /// results.
+    /// results. Files are walked and parsed in parallel across
+    /// [`ScanOptions::threads`] workers.
     pub fn scan(&self, root: &Path) -> Result<ScanResult> {
         let start = Instant::now();
         let root = root
@@ -81,52 +94,49 @@ impl Scanner {
         }
 
         if !self.options.include.is_empty() || !self.options.exclude.is_empty() {
-            let mut override_builder = OverrideBuilder::new(&root);
-            for pattern in &self.options.include {
-                override_builder
-                    .add(pattern)
-                    .wrap_err_with(|| format!("Invalid include pattern: {}", pattern))?;
-            }
-
-            for pattern in &self.options.exclude {
-                let exclude_pattern = format!("!{}", pattern);
-                override_builder
-                    .add(&exclude_pattern)
-                    .wrap_err_with(|| format!("Invalid exclude pattern: {}", pattern))?;
-            }
-
-            let overrides = override_builder.build()?;
+            let overrides = self.build_overrides(&root)?;
             builder.overrides(overrides);
         }
 
-        for entry in builder.build() {
-            match entry {
-                Ok(entry) => {
-                    let path = entry.path();
+        let (tx, rx) = mpsc::channel::<(PathBuf, Vec<TodoItem>)>();
+        let parser = &self.parser;
 
-                    if path.is_dir() {
-                        continue;
-                    }
+        builder.build_parallel().run(|| {
+            let parser = parser.clone();
+            let tx = tx.clone();
 
-                    if let Some(file_type) = entry.file_type()
-                        && !file_type.is_file()
-                    {
-                        continue;
-                    }
+            Box::new(move |entry| {
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(_) => return WalkState::Continue,
+                };
 
-                    match self.parse_file(path) {
-                        Ok(items) => {
-                            result.add_file(path.to_path_buf(), items);
-                        }
-                        Err(_) => {
-                            result.summary.files_scanned += 1;
-                        }
-                    }
+                let path = entry.path();
+
+                if path.is_dir() {
+                    return WalkState::Continue;
                 }
-                Err(_) => {
-                    continue;
+
+                if let Some(file_type) = entry.file_type()
+                    && !file_type.is_file()
+                {
+                    return WalkState::Continue;
                 }
-            }
+
+                // A parse error is treated the same as zero matches: the
+                // file still counts as scanned, but nothing is stored.
+                let items = parser.parse_file(path).unwrap_or_default();
+                let _ = tx.send((path.to_path_buf(), items));
+
+                WalkState::Continue
+            })
+        });
+
+        // Drop the original sender so the `rx` iterator below ends once
+        // every worker thread (and its cloned sender) has finished.
+        drop(tx);
+        for (path, items) in rx {
+            result.add_file(path, items);
         }
 
         result.summary.duration_ms = start.elapsed().as_millis();
@@ -134,10 +144,32 @@ impl Scanner {
         Ok(result)
     }
 
-    fn parse_file(&self, path: &Path) -> Result<Vec<TodoItem>> {
-        self.parser
-            .parse_file(path)
-            .wrap_err_with(|| format!("Failed to parse file: {}", path.display()))
+    /// Returns the cached include/exclude [`Override`] set, building and
+    /// caching it on first use.
+    fn build_overrides(&self, root: &Path) -> Result<Override> {
+        if let Some(overrides) = self.overrides.get() {
+            return Ok(overrides.clone());
+        }
+
+        let mut override_builder = OverrideBuilder::new(root);
+        for pattern in &self.options.include {
+            override_builder
+                .add(pattern)
+                .wrap_err_with(|| format!("Invalid include pattern: {}", pattern))?;
+        }
+
+        for pattern in &self.options.exclude {
+            let exclude_pattern = format!("!{}", pattern);
+            override_builder
+                .add(&exclude_pattern)
+                .wrap_err_with(|| format!("Invalid exclude pattern: {}", pattern))?;
+        }
+
+        let overrides = override_builder.build()?;
+        // Best-effort: if another thread raced us to set it, keep theirs.
+        let _ = self.overrides.set(overrides.clone());
+
+        Ok(overrides)
     }
 }
 
@@ -328,5 +360,47 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
 
         assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_reuses_cached_overrides_across_repeated_calls() {
+        let dir = temp_dir("reused_overrides");
+        fs::write(dir.join("a.rs"), "// TODO: rust file\n").unwrap();
+        fs::write(dir.join("b.py"), "# TODO: python file\n").unwrap();
+
+        let options = ScanOptions {
+            include: vec!["*.rs".to_string()],
+            ..Default::default()
+        };
+        let s = scanner(options);
+
+        // The `Override` set is built and cached on the first call; a
+        // second call on the same `Scanner` must reuse it and produce the
+        // same result rather than rebuilding (or erroring).
+        let first = s.scan(&dir).unwrap();
+        let second = s.scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(first.summary.total_count, 1);
+        assert_eq!(second.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_finds_todos_across_many_files_in_parallel() {
+        let dir = temp_dir("parallel_many_files");
+        for i in 0..50 {
+            fs::write(dir.join(format!("f{i}.rs")), format!("// TODO: item {i}\n")).unwrap();
+        }
+
+        let options = ScanOptions {
+            threads: 4,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 50);
+        assert_eq!(result.summary.files_with_todos, 50);
+        assert_eq!(result.summary.files_scanned, 50);
     }
 }

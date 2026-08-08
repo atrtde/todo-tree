@@ -6,7 +6,8 @@ A command-line tool to find and display TODO-style comments in your codebase, si
 
 ## Features
 
-- 🔍 **Recursive directory scanning** - Respects `.gitignore` rules automatically
+- 🔍 **Recursive directory scanning** - Respects `.gitignore` rules automatically, walked in parallel across CPU cores
+- 👀 **Watch mode** - `tt watch` re-scans automatically as files change
 - 🏷️ **Configurable tags** - TODO, FIXME, BUG, NOTE, HACK, WARN, PERF, and more (and custom tags)
 - 🌳 **Tree view output** - Beautiful hierarchical display grouped by file
 - 📋 **Multiple output formats** - Tree, flat list, and JSON
@@ -105,6 +106,12 @@ tt scan ./src
 # Scan with specific tags
 tt scan --tags TODO,FIXME,BUG
 
+# Watch for file changes and re-scan automatically
+tt watch ./src
+
+# Tune the debounce window (default 250ms) for bursty saves
+tt watch --debounce-ms 500
+
 # List all TODOs in flat format
 tt list
 
@@ -117,6 +124,16 @@ tt stats
 # Create a GitHub Actions workflow
 tt workflow init
 ```
+
+### Watch Mode
+
+`tt watch` (alias `tt w`) accepts the same filter and output flags as `tt scan` (`--tags`, `--include`, `--exclude`, `--json`, `--flat`, `--hidden`, etc.), re-scanning and reprinting on every relevant file change:
+
+```bash
+tt watch --tags TODO,FIXME --exclude "*.log"
+```
+
+File-system events are filtered through the same `.gitignore` and `--include`/`--exclude` rules as a normal scan before a re-scan is triggered, so noise from ignored directories (`target/`, `node_modules/`, ...) doesn't cause unnecessary re-scans.
 
 ## Configuration
 

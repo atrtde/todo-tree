@@ -38,6 +38,8 @@ pub struct GlobalOptions {
 pub enum Command {
     #[command(visible_alias = "s", about = "Scan files and print TODO matches")]
     Scan(ScanArgs),
+    #[command(visible_alias = "w", about = "Watch for file changes and re-scan")]
+    Watch(WatchArgs),
     #[command(visible_alias = "l", visible_alias = "ls", about = "List TODO matches")]
     List(ListArgs),
     #[command(visible_alias = "t", about = "Manage configured TODO tags")]
@@ -118,6 +120,18 @@ impl Default for ScanArgs {
             group_by_tag: false,
         }
     }
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct WatchArgs {
+    #[command(flatten)]
+    pub scan: ScanArgs,
+    #[arg(
+        long,
+        default_value = "250",
+        help = "Debounce window in milliseconds before re-scanning after a file change"
+    )]
+    pub debounce_ms: u64,
 }
 
 #[derive(Args, Debug, Clone, Default)]

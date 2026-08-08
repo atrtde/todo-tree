@@ -35,6 +35,9 @@ toml = "1"
 colored = "3.1"
 color-eyre = "0.6"
 dirs = "6.0"
+memchr = "2.8"
+notify = "8.2"
+notify-debouncer-mini = "0.7"
 
 [profile.release]
 lto = true

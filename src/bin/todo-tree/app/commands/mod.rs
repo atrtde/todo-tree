@@ -9,6 +9,7 @@ pub mod list;
 pub mod scan;
 pub mod stats;
 pub mod tags;
+pub mod watch;
 pub mod workflow;
 
 pub(crate) fn load_config(path: &Path, config_path: Option<&Path>) -> Result<Config> {
