@@ -137,36 +137,24 @@ Create a `.todorc.json` or `.todorc.toml` file in your project root:
 }
 ```
 
-### YAML Format (`.todorc.yaml`)
+### TOML Format (`.todorc.toml`)
 
-```yaml
-tags:
-  - TODO
-  - FIXME
-  - BUG
-  - NOTE
-  - HACK
-
-include:
-  - "*.rs"
-  - "*.py"
-
-exclude:
-  - "target/**"
-  - "node_modules/**"
-
-json: false
-flat: false
-no_color: false
+```toml
+tags = ["TODO", "FIXME", "BUG", "NOTE", "HACK"]
+include = ["*.rs", "*.py"]
+exclude = ["target/**", "node_modules/**"]
+json = false
+flat = false
+no_color = false
 ```
 
 ### Configuration Search Order
 
 1. `.todorc` in the current directory
 2. `.todorc.json` in the current directory
-3. `.todorc.yaml` or `.todorc.yml` in the current directory
+3. `.todorc.toml` in the current directory
 4. Parent directories (recursive)
-5. `~/.config/todo-tree/config.json` (global config)
+5. `~/.config/todo-tree/config.json` or `config.toml` (global config)
 
 ## Tag Matching Rules
 
