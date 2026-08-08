@@ -1,3 +1,5 @@
+//! Regex-based parsing of TODO-style comments out of file content.
+
 use crate::core::{Priority, TodoItem};
 use regex::{Regex, RegexBuilder};
 use std::path::Path;
@@ -36,6 +38,7 @@ use std::path::Path;
 pub const DEFAULT_REGEX: &str =
     r#"(//|#|<!--|;|/\*|\*|--|%|"""|'''|REM\s)\s*($TAGS)(?:\(([^)]+)\))?:(.*)"#;
 
+/// Parses TODO-style tags out of file content using a configurable regex.
 #[derive(Debug, Clone)]
 pub struct TodoParser {
     pattern: Option<Regex>,
@@ -44,10 +47,15 @@ pub struct TodoParser {
 }
 
 impl TodoParser {
+    /// Creates a parser for `tags`, requiring an exact-case match and a
+    /// trailing colon, using the default comment-marker regex.
     pub fn new(tags: &[String], case_sensitive: bool) -> Self {
         Self::with_options(tags, case_sensitive, true, None)
     }
 
+    /// Creates a parser with full control over case sensitivity, whether a
+    /// trailing colon is required, and an optional custom regex (in place
+    /// of [`DEFAULT_REGEX`]).
     pub fn with_options(
         tags: &[String],
         case_sensitive: bool,
@@ -90,6 +98,8 @@ impl TodoParser {
         Some(regex)
     }
 
+    /// Parses a single line, returning the matched item if the line
+    /// contains one of the parser's tags.
     pub fn parse_line(&self, line: &str, line_number: usize) -> Option<TodoItem> {
         let pattern = self.pattern.as_ref()?;
         if let Some(captures) = pattern.captures(line) {
@@ -129,6 +139,8 @@ impl TodoParser {
         None
     }
 
+    /// Parses every line of `content`, returning all matched items in
+    /// order.
     pub fn parse_content(&self, content: &str) -> Vec<TodoItem> {
         content
             .lines()
@@ -137,11 +149,13 @@ impl TodoParser {
             .collect()
     }
 
+    /// Reads `path` and parses its contents.
     pub fn parse_file(&self, path: &Path) -> std::io::Result<Vec<TodoItem>> {
         let content = std::fs::read_to_string(path)?;
         Ok(self.parse_content(&content))
     }
 
+    /// The tags this parser was configured with.
     pub fn tags(&self) -> &[String] {
         &self.tags
     }

@@ -1,3 +1,6 @@
+//! Domain types: TODO items, scan results/summaries, priorities, and the
+//! built-in tag catalog.
+
 pub mod priority;
 pub mod tags;
 pub mod types;

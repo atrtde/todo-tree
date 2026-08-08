@@ -1,3 +1,5 @@
+//! Directory walking and file parsing orchestration.
+
 use crate::core::{ScanResult, TodoItem};
 use crate::parser::TodoParser;
 use color_eyre::eyre::{Result, WrapErr};
@@ -6,14 +8,23 @@ use ignore::overrides::OverrideBuilder;
 use std::path::Path;
 use std::time::Instant;
 
+/// Options controlling how [`Scanner`] walks a directory tree.
 #[derive(Debug, Clone)]
 pub struct ScanOptions {
+    /// Glob patterns to include; empty means "include everything not
+    /// excluded".
     pub include: Vec<String>,
+    /// Glob patterns to exclude.
     pub exclude: Vec<String>,
+    /// Maximum directory depth to descend; `0` means unlimited.
     pub max_depth: usize,
+    /// Whether to follow symlinks.
     pub follow_links: bool,
+    /// Whether to include hidden files and directories.
     pub hidden: bool,
+    /// Number of worker threads to use; `0` lets the walker choose.
     pub threads: usize,
+    /// Whether to respect `.gitignore`/global/local git ignore rules.
     pub respect_gitignore: bool,
 }
 
