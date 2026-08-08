@@ -10,8 +10,8 @@ pub mod utils;
 pub use crate::core::{Priority, ScanResult, ScanSummary, TodoItem};
 use clap::Parser;
 use cli::{Cli, Commands};
-use commands::{init, list, scan, stats, tags as cli_tags, workflow};
 use color_eyre::eyre::Result;
+use commands::{init, list, scan, stats, tags as cli_tags, workflow};
 
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
