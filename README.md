@@ -221,7 +221,7 @@ Use `--force` to overwrite an existing workflow, `--path` to write the template 
 ```bash
 tt workflow init --force
 tt workflow init --path .github/workflows/custom-todo-tree.yml
-tt workflow init --action alexandretrotel/todo-tree-action@main
+tt workflow init --action alexandretrotel/todo-tree-action@v1.0.3
 ```
 
 ## Terminal Support
