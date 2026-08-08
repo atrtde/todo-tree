@@ -1,7 +1,6 @@
 use super::options::PrintOptions;
-use super::utils::colorize_tag;
+use super::utils::{colorize_tag, format_duration};
 use crate::core::ScanResult;
-use crate::utils::display::format_duration;
 use colored::Colorize;
 use std::io::{self, Write};
 

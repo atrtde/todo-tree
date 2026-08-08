@@ -1,8 +1,24 @@
 use super::options::PrintOptions;
 use crate::core::Priority;
-use crate::utils::display::priority_to_color;
-use colored::Colorize;
+use colored::{Color, Colorize};
 use std::path::Path;
+
+pub(crate) fn format_duration(ms: u128) -> String {
+    if ms < 1000 {
+        format!("{}ms", ms)
+    } else {
+        format!("{:.2}s", ms as f64 / 1000.0)
+    }
+}
+
+pub(crate) fn priority_to_color(priority: Priority) -> Color {
+    match priority {
+        Priority::Critical => Color::Red,
+        Priority::High => Color::Yellow,
+        Priority::Medium => Color::Cyan,
+        Priority::Low => Color::Green,
+    }
+}
 
 pub fn format_path(path: &Path, options: &PrintOptions) -> String {
     if options.full_paths {
