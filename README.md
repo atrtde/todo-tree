@@ -187,7 +187,7 @@ tt scan --ignore-case
 # Allow tags without colon (matches "TODO something")
 tt scan --no-require-colon
 
-# Use both options together (most flexible, like v0.2.x behavior)
+# Use both options together (most flexible)
 tt scan --ignore-case --no-require-colon
 ```
 
@@ -230,18 +230,18 @@ tt workflow init --action alexandretrotel/todo-tree-action@main
 
 The tool generates clickable hyperlinks (OSC 8) in supported terminals:
 
-- iTerm2
-- WezTerm
-- Hyper
-- VS Code Terminal
-- GNOME Terminal (VTE 0.50+)
-- Konsole
-- Alacritty
-- Ghostty
+- [iTerm2](https://iterm2.com/)
+- [WezTerm](https://wezfurlong.org/wezterm/)
+- [Hyper](https://hyper.is/)
+- [VS Code Terminal](https://code.visualstudio.com/docs/terminal/basics)
+- [GNOME Terminal](https://help.gnome.org/users/gnome-terminal/stable/) (VTE 0.50+)
+- [Konsole](https://konsole.kde.org/)
+- [Alacritty](https://alacritty.org/)
+- [Ghostty](https://ghostty.org/)
 
 ### Color Support
 
-Colors are automatically enabled when outputting to a terminal. Use `--no-color` or set the `NO_COLOR` environment variable to disable.
+Colors are automatically enabled when outputting to a terminal. Use `--no-color` or set the [`NO_COLOR`](https://no-color.org/) environment variable to disable.
 
 ## Related Projects
 
