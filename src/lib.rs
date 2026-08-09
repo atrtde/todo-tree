@@ -1,31 +1,24 @@
-pub mod cli;
-pub mod commands;
+//! Core library for `todo-tree`: parses TODO-style comments out of source
+//! files and produces structured scan results.
+//!
+//! This crate is intentionally silent and side-effect-free: it never prints
+//! to stdout/stderr and never reads CLI arguments. Those concerns live in
+//! the `todo-tree`/`tt` binaries, which are thin CLI wrappers around
+//! [`parser::TodoParser`], [`scanner::Scanner`], and [`printer::Printer`].
+
+#![warn(missing_docs)]
+
+/// `.todorc` configuration file discovery, parsing, and merging with CLI
+/// overrides.
 pub mod config;
+/// Domain types shared across the crate: TODO items, scan results and
+/// summaries, priorities, and the built-in tag catalog.
 pub mod core;
+/// Regex-based parsing of TODO-style comments out of file content.
 pub mod parser;
+/// Formatting a [`core::ScanResult`] as tree, flat, or JSON output.
 pub mod printer;
+/// Directory walking and file parsing orchestration.
 pub mod scanner;
-pub mod utils;
 
 pub use crate::core::{Priority, ScanResult, ScanSummary, TodoItem};
-use clap::Parser;
-use cli::{Cli, Commands};
-use commands::{init, list, scan, stats, tags as cli_tags, workflow};
-use color_eyre::eyre::Result;
-
-pub fn run() -> Result<()> {
-    let cli = Cli::parse();
-
-    if cli.global.no_color || std::env::var("NO_COLOR").is_ok() {
-        colored::control::set_override(false);
-    }
-
-    match cli.get_command() {
-        Commands::Scan(args) => scan::run(args, &cli.global),
-        Commands::List(args) => list::run(args, &cli.global),
-        Commands::Tags(args) => cli_tags::run(args, &cli.global),
-        Commands::Init(args) => init::run(args),
-        Commands::Workflow(args) => workflow::run(args),
-        Commands::Stats(args) => stats::run(args, &cli.global),
-    }
-}

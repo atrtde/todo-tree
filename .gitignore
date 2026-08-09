@@ -1,1 +1,3 @@
 target/
+build_rs_cov.profraw
+index.scip

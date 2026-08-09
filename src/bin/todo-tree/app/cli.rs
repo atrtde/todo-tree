@@ -14,7 +14,7 @@ pub struct Cli {
     pub global: GlobalOptions,
 
     #[command(subcommand)]
-    pub command: Option<Commands>,
+    pub command: Option<Command>,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -35,9 +35,11 @@ pub struct GlobalOptions {
 }
 
 #[derive(Subcommand, Debug, Clone)]
-pub enum Commands {
+pub enum Command {
     #[command(visible_alias = "s", about = "Scan files and print TODO matches")]
     Scan(ScanArgs),
+    #[command(visible_alias = "w", about = "Watch for file changes and re-scan")]
+    Watch(WatchArgs),
     #[command(visible_alias = "l", visible_alias = "ls", about = "List TODO matches")]
     List(ListArgs),
     #[command(visible_alias = "t", about = "Manage configured TODO tags")]
@@ -120,6 +122,18 @@ impl Default for ScanArgs {
     }
 }
 
+#[derive(Args, Debug, Clone)]
+pub struct WatchArgs {
+    #[command(flatten)]
+    pub scan: ScanArgs,
+    #[arg(
+        long,
+        default_value = "250",
+        help = "Debounce window in milliseconds before re-scanning after a file change"
+    )]
+    pub debounce_ms: u64,
+}
+
 #[derive(Args, Debug, Clone, Default)]
 pub struct ListArgs {
     #[arg(value_hint = ValueHint::AnyPath, help = "Path to scan (defaults to current directory)")]
@@ -172,7 +186,7 @@ pub struct InitArgs {
     #[arg(
         long,
         default_value = "json",
-        help = "Configuration format: json or yaml"
+        help = "Configuration format: json or toml"
     )]
     pub format: ConfigFormat,
     #[arg(short, long, help = "Overwrite the config file if it exists")]
@@ -241,15 +255,15 @@ pub enum ConfigFormat {
     #[default]
     #[value(name = "json", help = "Generate JSON config")]
     Json,
-    #[value(name = "yaml", help = "Generate YAML config")]
-    Yaml,
+    #[value(name = "toml", help = "Generate TOML config")]
+    Toml,
 }
 
 impl Cli {
-    pub fn get_command(&self) -> Commands {
+    pub fn get_command(&self) -> Command {
         self.command
             .clone()
-            .unwrap_or_else(|| Commands::Scan(ScanArgs::default()))
+            .unwrap_or_else(|| Command::Scan(ScanArgs::default()))
     }
 }
 

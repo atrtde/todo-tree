@@ -1,13 +1,15 @@
-use crate::core::ScanResult;
-use crate::{cli, config::Config};
+use crate::app::cli;
 use color_eyre::eyre::Result;
 use std::path::Path;
+use todo_tree::config::Config;
+use todo_tree::core::ScanResult;
 
 pub mod init;
 pub mod list;
 pub mod scan;
 pub mod stats;
 pub mod tags;
+pub mod watch;
 pub mod workflow;
 
 pub(crate) fn load_config(path: &Path, config_path: Option<&Path>) -> Result<Config> {
@@ -26,8 +28,7 @@ pub(crate) fn save_config(config: &Config) -> Result<()> {
     let config_files = [
         current_dir.join(".todorc"),
         current_dir.join(".todorc.json"),
-        current_dir.join(".todorc.yaml"),
-        current_dir.join(".todorc.yml"),
+        current_dir.join(".todorc.toml"),
     ];
 
     for path in &config_files {

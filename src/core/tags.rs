@@ -1,12 +1,20 @@
+//! The built-in tag catalog.
+
 use super::priority::Priority;
 
+/// A single recognized tag: its name, human-readable description, and
+/// default priority.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TagDefinition {
+    /// The tag's name, e.g. `"TODO"`.
     pub name: &'static str,
+    /// A short human-readable description of what the tag means.
     pub description: &'static str,
+    /// The tag's default priority.
     pub priority: Priority,
 }
 
+/// The default set of recognized tags, grouped by priority.
 pub const DEFAULT_TAGS: &[TagDefinition] = &[
     // Medium
     TagDefinition {
@@ -99,12 +107,39 @@ pub const DEFAULT_TAGS: &[TagDefinition] = &[
     },
 ];
 
+/// The names of [`DEFAULT_TAGS`], in order.
 pub fn default_tag_names() -> Vec<String> {
     DEFAULT_TAGS.iter().map(|t| t.name.to_string()).collect()
 }
 
+/// Looks up a tag definition by name (case-insensitive).
 pub fn find_tag(name: &str) -> Option<&'static TagDefinition> {
     DEFAULT_TAGS
         .iter()
         .find(|t| t.name.eq_ignore_ascii_case(name))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_tag_names_matches_default_tags() {
+        let names = default_tag_names();
+        assert_eq!(names.len(), DEFAULT_TAGS.len());
+        assert_eq!(names[0], "TODO");
+        assert!(names.contains(&"FIXME".to_string()));
+    }
+
+    #[test]
+    fn find_tag_is_case_insensitive() {
+        let tag = find_tag("todo").expect("TODO should be found");
+        assert_eq!(tag.name, "TODO");
+        assert_eq!(tag.priority, Priority::Medium);
+    }
+
+    #[test]
+    fn find_tag_returns_none_for_unknown_tag() {
+        assert!(find_tag("NOT_A_REAL_TAG").is_none());
+    }
 }

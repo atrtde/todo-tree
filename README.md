@@ -6,11 +6,12 @@ A command-line tool to find and display TODO-style comments in your codebase, si
 
 ## Features
 
-- 🔍 **Recursive directory scanning** - Respects `.gitignore` rules automatically
+- 🔍 **Recursive directory scanning** - Respects `.gitignore` rules automatically, walked in parallel across CPU cores
+- 👀 **Watch mode** - `tt watch` re-scans automatically as files change
 - 🏷️ **Configurable tags** - TODO, FIXME, BUG, NOTE, HACK, WARN, PERF, and more (and custom tags)
 - 🌳 **Tree view output** - Beautiful hierarchical display grouped by file
 - 📋 **Multiple output formats** - Tree, flat list, and JSON
-- ⚙️ **Configuration file support** - `.todorc` in JSON or YAML format
+- ⚙️ **Configuration file support** - `.todorc` in JSON or TOML format
 - 🎨 **Colored output** - Priority-based coloring for different tag types
 - 🔗 **Clickable links** - Terminal hyperlinks to file locations (where supported)
 - 🤖 **GitHub Action** - Automatically scan PRs and post TODO summaries as comments
@@ -105,6 +106,12 @@ tt scan ./src
 # Scan with specific tags
 tt scan --tags TODO,FIXME,BUG
 
+# Watch for file changes and re-scan automatically
+tt watch ./src
+
+# Tune the debounce window (default 250ms) for bursty saves
+tt watch --debounce-ms 500
+
 # List all TODOs in flat format
 tt list
 
@@ -118,9 +125,19 @@ tt stats
 tt workflow init
 ```
 
+### Watch Mode
+
+`tt watch` (alias `tt w`) accepts the same filter and output flags as `tt scan` (`--tags`, `--include`, `--exclude`, `--json`, `--flat`, `--hidden`, etc.), re-scanning and reprinting on every relevant file change:
+
+```bash
+tt watch --tags TODO,FIXME --exclude "*.log"
+```
+
+File-system events are filtered through the same `.gitignore` and `--include`/`--exclude` rules as a normal scan before a re-scan is triggered, so noise from ignored directories (`target/`, `node_modules/`, ...) doesn't cause unnecessary re-scans.
+
 ## Configuration
 
-Create a `.todorc.json` or `.todorc.yaml` file in your project root:
+Create a `.todorc.json` or `.todorc.toml` file in your project root:
 
 ### JSON Format (`.todorc.json`)
 
@@ -137,36 +154,24 @@ Create a `.todorc.json` or `.todorc.yaml` file in your project root:
 }
 ```
 
-### YAML Format (`.todorc.yaml`)
+### TOML Format (`.todorc.toml`)
 
-```yaml
-tags:
-  - TODO
-  - FIXME
-  - BUG
-  - NOTE
-  - HACK
-
-include:
-  - "*.rs"
-  - "*.py"
-
-exclude:
-  - "target/**"
-  - "node_modules/**"
-
-json: false
-flat: false
-no_color: false
+```toml
+tags = ["TODO", "FIXME", "BUG", "NOTE", "HACK"]
+include = ["*.rs", "*.py"]
+exclude = ["target/**", "node_modules/**"]
+json = false
+flat = false
+no_color = false
 ```
 
 ### Configuration Search Order
 
 1. `.todorc` in the current directory
 2. `.todorc.json` in the current directory
-3. `.todorc.yaml` or `.todorc.yml` in the current directory
+3. `.todorc.toml` in the current directory
 4. Parent directories (recursive)
-5. `~/.config/todo-tree/config.json` (global config)
+5. `$XDG_CONFIG_HOME/todo-tree/config.json` or `config.toml` (global config); falls back to the platform config directory (e.g. `~/.config` on Linux, `~/Library/Application Support` on macOS) if `XDG_CONFIG_HOME` isn't set
 
 ## Tag Matching Rules
 
@@ -199,7 +204,7 @@ tt scan --ignore-case
 # Allow tags without colon (matches "TODO something")
 tt scan --no-require-colon
 
-# Use both options together (most flexible, like v0.2.x behavior)
+# Use both options together (most flexible)
 tt scan --ignore-case --no-require-colon
 ```
 
@@ -226,14 +231,14 @@ Generate a workflow file at `.github/workflows/todo-tree.yml`:
 tt workflow init
 ```
 
-This creates a pull request workflow that checks out the repository and runs `alexandretrotel/todo-tree-action@v1.0.3` by default.
+This creates a pull request workflow that checks out the repository and runs `alexandretrotel/todo-tree-action@main` by default.
 
-Use `--force` to overwrite an existing workflow, `--path` to write the template elsewhere, or `--action` to override the generated action ref:
+Use `--force` to overwrite an existing workflow, `--path` to write the template elsewhere, or `--action` to override the generated action ref (e.g. to pin a specific release instead of `main`):
 
 ```bash
 tt workflow init --force
 tt workflow init --path .github/workflows/custom-todo-tree.yml
-tt workflow init --action alexandretrotel/todo-tree-action@main
+tt workflow init --action alexandretrotel/todo-tree-action@v1.0.3
 ```
 
 ## Terminal Support
@@ -242,18 +247,18 @@ tt workflow init --action alexandretrotel/todo-tree-action@main
 
 The tool generates clickable hyperlinks (OSC 8) in supported terminals:
 
-- iTerm2
-- WezTerm
-- Hyper
-- VS Code Terminal
-- GNOME Terminal (VTE 0.50+)
-- Konsole
-- Alacritty
-- Ghostty
+- [iTerm2](https://iterm2.com/)
+- [WezTerm](https://wezfurlong.org/wezterm/)
+- [Hyper](https://hyper.is/)
+- [VS Code Terminal](https://code.visualstudio.com/docs/terminal/basics)
+- [GNOME Terminal](https://help.gnome.org/users/gnome-terminal/stable/) (VTE 0.50+)
+- [Konsole](https://konsole.kde.org/)
+- [Alacritty](https://alacritty.org/)
+- [Ghostty](https://ghostty.org/)
 
 ### Color Support
 
-Colors are automatically enabled when outputting to a terminal. Use `--no-color` or set the `NO_COLOR` environment variable to disable.
+Colors are automatically enabled when outputting to a terminal. Use `--no-color` or set the [`NO_COLOR`](https://no-color.org/) environment variable to disable.
 
 ## Related Projects
 

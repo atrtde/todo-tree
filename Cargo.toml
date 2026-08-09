@@ -1,11 +1,12 @@
 [package]
 name = "todo-tree"
-version = "0.6.3"
+version = "1.0.0"
 edition = "2024"
 authors = ["Alexandre Trotel"]
-license-file = "LICENSE"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/alexandretrotel/todo-tree"
 homepage = "https://github.com/alexandretrotel/todo-tree"
+documentation = "https://docs.rs/todo-tree"
 description = "A CLI tool to find and display TODO-style comments in your codebase"
 readme = "README.md"
 keywords = ["todo", "cli", "developer-tools", "productivity"]
@@ -15,26 +16,27 @@ include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [lib]
 name = "todo_tree"
-path = "src/lib.rs"
 
 [[bin]]
 name = "todo-tree"
-path = "src/main.rs"
+path = "src/bin/todo-tree/main.rs"
 
 [[bin]]
 name = "tt"
-path = "src/bin/tt.rs"
+path = "src/bin/tt/main.rs"
 
 [dependencies]
-clap = { version = "4.5.60", features = ["derive", "env"] }
-regex = "1.12.3"
-ignore = "0.4.25"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
-yaml_serde = "0.10.3"
-colored = "3.1.1"
-color-eyre = "0.6.3"
-directories-next = "2.0"
+clap = { version = "4.6", features = ["derive", "env"] }
+regex = "1.13"
+ignore = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "1"
+colored = "3.1"
+color-eyre = "0.6"
+dirs = "6.0"
+memchr = "2.8"
+notify-debouncer-mini = "0.7"
 
 [profile.release]
 lto = true

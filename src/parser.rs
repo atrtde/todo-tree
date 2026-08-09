@@ -1,19 +1,63 @@
-use crate::core::{DEFAULT_REGEX, Priority, TodoItem};
+//! Regex-based parsing of TODO-style comments out of file content.
+
+use crate::core::{Priority, TodoItem};
+use memchr::{memchr2, memmem};
 use regex::{Regex, RegexBuilder};
 use std::path::Path;
 
+/// Default regex pattern for matching TODO-style tags in comments.
+///
+/// This pattern is inspired by the VSCode Todo Tree extension and matches tags
+/// that appear after common comment markers.
+///
+/// Pattern breakdown:
+/// - `(//|#|<!--|;|/\*|\*|--)`  - Comment markers for most languages
+/// - `\s*`                       - Optional whitespace after comment marker
+/// - `($TAGS)`                   - The tag to match (placeholder, replaced at runtime)
+/// - `(?:\(([^)]+)\))?`          - Optional author in parentheses
+/// - `:`                         - Required colon after tag
+/// - `(.*)`                      - The message
+///
+/// Supported comment syntaxes:
+/// ```text
+///   //    - C, C++, Java, JavaScript, TypeScript, Rust, Go, Swift, Kotlin
+///   #     - Python, Ruby, Shell, YAML, TOML
+///   /*    - C-style block comments
+///   *     - Block comment continuation lines
+///   <!--  - HTML, XML, Markdown comments
+///   --    - SQL, Lua, Haskell, Ada
+///   ;     - Lisp, Clojure, Assembly, INI files
+///   %     - LaTeX, Erlang, MATLAB, Prolog
+///   """   - Python docstrings
+///   '''   - Python docstrings
+///   REM   - Batch files
+/// ```
+///
+/// Note: `::` was removed from default comment markers to prevent false positives
+/// in Rust, C++, and other languages where `::` is used as a scope resolution operator
+/// (e.g., `std::io::Error`).
+pub const DEFAULT_REGEX: &str =
+    r#"(//|#|<!--|;|/\*|\*|--|%|"""|'''|REM\s)\s*($TAGS)(?:\(([^)]+)\))?:(.*)"#;
+
+/// Parses TODO-style tags out of file content using a configurable regex.
 #[derive(Debug, Clone)]
 pub struct TodoParser {
     pattern: Option<Regex>,
     tags: Vec<String>,
+    tag_bytes: Vec<Vec<u8>>,
     case_sensitive: bool,
 }
 
 impl TodoParser {
+    /// Creates a parser for `tags`, requiring an exact-case match and a
+    /// trailing colon, using the default comment-marker regex.
     pub fn new(tags: &[String], case_sensitive: bool) -> Self {
         Self::with_options(tags, case_sensitive, true, None)
     }
 
+    /// Creates a parser with full control over case sensitivity, whether a
+    /// trailing colon is required, and an optional custom regex (in place
+    /// of [`DEFAULT_REGEX`]).
     pub fn with_options(
         tags: &[String],
         case_sensitive: bool,
@@ -21,9 +65,11 @@ impl TodoParser {
         custom_regex: Option<&str>,
     ) -> Self {
         let pattern = Self::build_pattern(tags, case_sensitive, require_colon, custom_regex);
+        let tag_bytes = tags.iter().map(|tag| tag.as_bytes().to_vec()).collect();
         Self {
             pattern,
             tags: tags.to_vec(),
+            tag_bytes,
             case_sensitive,
         }
     }
@@ -56,6 +102,8 @@ impl TodoParser {
         Some(regex)
     }
 
+    /// Parses a single line, returning the matched item if the line
+    /// contains one of the parser's tags.
     pub fn parse_line(&self, line: &str, line_number: usize) -> Option<TodoItem> {
         let pattern = self.pattern.as_ref()?;
         if let Some(captures) = pattern.captures(line) {
@@ -95,6 +143,8 @@ impl TodoParser {
         None
     }
 
+    /// Parses every line of `content`, returning all matched items in
+    /// order.
     pub fn parse_content(&self, content: &str) -> Vec<TodoItem> {
         content
             .lines()
@@ -103,14 +153,67 @@ impl TodoParser {
             .collect()
     }
 
+    /// Reads `path` and parses its contents.
+    ///
+    /// Before paying for UTF-8 validation and a regex pass, this does a
+    /// cheap `memchr`-based byte scan for any of the configured tags. Files
+    /// that can't possibly match (lockfiles, bundled JS, binaries) are
+    /// skipped without ever being validated as UTF-8.
     pub fn parse_file(&self, path: &Path) -> std::io::Result<Vec<TodoItem>> {
-        let content = std::fs::read_to_string(path)?;
+        let bytes = std::fs::read(path)?;
+
+        if !contains_any_tag_bytes(&bytes, &self.tag_bytes, self.case_sensitive) {
+            return Ok(Vec::new());
+        }
+
+        let content = String::from_utf8(bytes)
+            .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))?;
         Ok(self.parse_content(&content))
     }
 
+    /// The tags this parser was configured with.
     pub fn tags(&self) -> &[String] {
         &self.tags
     }
+}
+
+/// Whether `haystack` contains any of `tags` as a byte substring.
+fn contains_any_tag_bytes(haystack: &[u8], tags: &[Vec<u8>], case_sensitive: bool) -> bool {
+    tags.iter()
+        .any(|tag| contains_tag_bytes(haystack, tag, case_sensitive))
+}
+
+/// Whether `haystack` contains `needle` as a byte substring.
+///
+/// In case-sensitive mode this is a direct [`memmem`] search. In
+/// case-insensitive mode, [`memchr2`] finds candidate positions matching
+/// either case of `needle`'s first byte (which `memmem` can't do), and each
+/// candidate is verified with an ASCII case-insensitive comparison.
+fn contains_tag_bytes(haystack: &[u8], needle: &[u8], case_sensitive: bool) -> bool {
+    if needle.is_empty() || haystack.len() < needle.len() {
+        return false;
+    }
+
+    if case_sensitive {
+        return memmem::find(haystack, needle).is_some();
+    }
+
+    let first = needle[0];
+    let (lower, upper) = (first.to_ascii_lowercase(), first.to_ascii_uppercase());
+
+    let mut offset = 0;
+    while let Some(pos) = memchr2(lower, upper, &haystack[offset..]) {
+        let start = offset + pos;
+        let end = start + needle.len();
+
+        if end <= haystack.len() && haystack[start..end].eq_ignore_ascii_case(needle) {
+            return true;
+        }
+
+        offset = start + 1;
+    }
+
+    false
 }
 
 #[cfg(test)]
@@ -292,6 +395,60 @@ ignore
         assert_eq!(items[1].author.as_deref(), Some("jane"));
         assert_eq!(items[1].message, "also from file");
         assert_eq!(items[1].line, 3);
+    }
+
+    fn temp_file_path(name: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("todo_parser_test_{name}_{unique}.bin"))
+    }
+
+    #[test]
+    fn parse_file_fast_skip_avoids_utf8_error_when_no_tag_present() {
+        let parser = TodoParser::new(&tags(), true);
+        let path = temp_file_path("no_tag_invalid_utf8");
+
+        // No tag bytes anywhere in this buffer, so the fast-skip should
+        // return an empty result without ever validating it as UTF-8.
+        fs::write(&path, [0xFF, 0xFE, 0xFD, b'x', b'y', b'z']).unwrap();
+
+        let items = parser.parse_file(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn parse_file_still_errors_on_invalid_utf8_when_tag_bytes_present() {
+        let parser = TodoParser::new(&tags(), true);
+        let path = temp_file_path("tag_present_invalid_utf8");
+
+        // "TODO" is present, so the fast-skip can't rule this file out;
+        // the invalid UTF-8 must still surface as an error.
+        let mut content = b"TODO".to_vec();
+        content.extend_from_slice(&[0xFF, 0xFE, 0xFD]);
+        fs::write(&path, content).unwrap();
+
+        let result = parser.parse_file(&path);
+        let _ = fs::remove_file(&path);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_file_fast_skip_finds_case_insensitive_mixed_case_tag() {
+        let parser = TodoParser::new(&tags(), false);
+        let path = temp_file_path("mixed_case_tag");
+
+        fs::write(&path, "// tOdO: mixed case still matches\n").unwrap();
+
+        let items = parser.parse_file(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].tag, "TODO");
     }
 
     #[test]

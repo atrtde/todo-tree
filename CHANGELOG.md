@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## todo-tree-1.0.0
+
+### Breaking Changes
+- **Config format**: YAML config support (`.todorc.yaml`/`.todorc.yml`/`config.yaml`/`config.yml`) has been removed in favor of TOML (`.todorc.toml`/`config.toml`). The `yaml_serde` dependency is gone; `toml` has been added. JSON config (`.todorc.json`) is unaffected.
+- **`DEFAULT_REGEX` moved**: was `todo_tree::core::DEFAULT_REGEX`, now `todo_tree::parser::DEFAULT_REGEX`.
+- **Library/binary split**: CLI argument parsing and subcommand implementations moved out of the `todo_tree` library and into the `todo-tree`/`tt` binaries. The library crate no longer exposes `run()`, `cli`, or `commands` — it is now a documented, side-effect-free library (`todo_tree::{config, core, parser, printer, scanner}`) suitable for use outside the CLI.
+- **`todo_tree::utils` removed**: `format_duration`/`priority_to_color` are no longer part of the public API. They now live as crate-private helpers inside `printer`; the binaries carry their own copy for their custom (non-`Printer`) colored output.
+- **`todo_tree::core::types` split**: replaced by `todo_tree::core::{todo_item, file_result, summary, scan_result}`. The re-exported types (`TodoItem`, `FileResult`, `ScanSummary`, `ScanResult`) are unchanged at `todo_tree::core::*` and `todo_tree::*`.
+- **Global config directory resolution**: now honors `$XDG_CONFIG_HOME` on every platform (previously only the OS-default config directory was checked, and XDG wasn't consulted on macOS/Windows at all).
+- **`dirs` replaces `directories-next`** for platform/XDG directory resolution.
+
+### Changed
+- Reorganized `src/` so the `todo_tree` library and the `todo-tree`/`tt` binaries live in clearly separated trees (`src/` for the library, `src/bin/todo-tree/` and `src/bin/tt/` for the binaries). `tt` shares `todo-tree`'s CLI implementation via `#[path]`, with no runtime indirection.
+- Bumped all dependencies to their latest stable versions, pinned at `major.minor` only.
+- `tt workflow init` now defaults to `alexandretrotel/todo-tree-action@main` instead of a pinned release tag; pass `--action owner/repo@ref` to pin a specific version.
+- `Scanner::scan` now walks in parallel (`ignore::WalkBuilder::build_parallel`) across `ScanOptions::threads` workers instead of walking single-threaded; the `threads` option now does what it always claimed to.
+- `Scanner` caches its `ignore::Overrides` after the first `scan()` call instead of rebuilding them on every call, since `tt watch` reuses one `Scanner` across many re-scans.
+- `TodoParser::parse_file` does a cheap `memchr`-based byte scan for configured tags before validating UTF-8 and running the regex pass, skipping that cost entirely for files that can't match (lockfiles, bundled JS, binaries).
+
+### Added
+- `documentation = "https://docs.rs/todo-tree"` in `Cargo.toml`; the crate now builds clean under `#![warn(missing_docs)]` with full public API documentation.
+- `tt watch` (alias `tt w`) subcommand: re-scans and reprints on file changes, using `notify` + `notify-debouncer-mini` to coalesce bursts (`--debounce-ms` to tune, default 250ms). File-system events are filtered through the same `.gitignore`/`--include`/`--exclude` rules as a normal scan before triggering a re-scan, so changes under ignored directories (`target/`, `node_modules/`, ...) are skipped.
+
+### CI
+- Rewrote `ci.yml` and added a dedicated `build-binaries.yml`, matching the workflow structure used in `dotfiles-manager`/`feedyourai`.
+- Simplified `release.yml`: dropped an unnecessary `submodules: true` checkout option (this repo has none), a redundant `-p todo-tree` build flag, and merged the per-OS artifact upload steps into one.
+- `todo-tree.yml` (this repo's own PR-scanning workflow) now tracks `todo-tree-action@main`.
+
 ## todo-tree-0.6.3
 
 ### Changed

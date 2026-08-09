@@ -1,19 +1,32 @@
+//! Directory walking and file parsing orchestration.
+
 use crate::core::{ScanResult, TodoItem};
 use crate::parser::TodoParser;
 use color_eyre::eyre::{Result, WrapErr};
-use ignore::WalkBuilder;
-use ignore::overrides::OverrideBuilder;
-use std::path::Path;
+use ignore::overrides::{Override, OverrideBuilder};
+use ignore::{WalkBuilder, WalkState};
+use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
+use std::sync::mpsc;
 use std::time::Instant;
 
+/// Options controlling how [`Scanner`] walks a directory tree.
 #[derive(Debug, Clone)]
 pub struct ScanOptions {
+    /// Glob patterns to include; empty means "include everything not
+    /// excluded".
     pub include: Vec<String>,
+    /// Glob patterns to exclude.
     pub exclude: Vec<String>,
+    /// Maximum directory depth to descend; `0` means unlimited.
     pub max_depth: usize,
+    /// Whether to follow symlinks.
     pub follow_links: bool,
+    /// Whether to include hidden files and directories.
     pub hidden: bool,
+    /// Number of worker threads to use; `0` lets the walker choose.
     pub threads: usize,
+    /// Whether to respect `.gitignore`/global/local git ignore rules.
     pub respect_gitignore: bool,
 }
 
@@ -31,16 +44,31 @@ impl Default for ScanOptions {
     }
 }
 
+/// Walks a directory tree, parsing every file with a [`TodoParser`].
+///
+/// A `Scanner` is cheap to reuse across repeated calls to [`Scanner::scan`]
+/// (e.g. `tt watch` re-scanning on every file change): the include/exclude
+/// [`Override`] set is built once, on the first call, and cached for the
+/// life of the `Scanner`.
 pub struct Scanner {
     parser: TodoParser,
     options: ScanOptions,
+    overrides: OnceLock<Override>,
 }
 
 impl Scanner {
+    /// Creates a scanner using `parser` and `options`.
     pub fn new(parser: TodoParser, options: ScanOptions) -> Self {
-        Self { parser, options }
+        Self {
+            parser,
+            options,
+            overrides: OnceLock::new(),
+        }
     }
 
+    /// Walks `root`, parsing every matching file and collecting the
+    /// results. Files are walked and parsed in parallel across
+    /// [`ScanOptions::threads`] workers.
     pub fn scan(&self, root: &Path) -> Result<ScanResult> {
         let start = Instant::now();
         let root = root
@@ -66,52 +94,49 @@ impl Scanner {
         }
 
         if !self.options.include.is_empty() || !self.options.exclude.is_empty() {
-            let mut override_builder = OverrideBuilder::new(&root);
-            for pattern in &self.options.include {
-                override_builder
-                    .add(pattern)
-                    .wrap_err_with(|| format!("Invalid include pattern: {}", pattern))?;
-            }
-
-            for pattern in &self.options.exclude {
-                let exclude_pattern = format!("!{}", pattern);
-                override_builder
-                    .add(&exclude_pattern)
-                    .wrap_err_with(|| format!("Invalid exclude pattern: {}", pattern))?;
-            }
-
-            let overrides = override_builder.build()?;
+            let overrides = self.build_overrides(&root)?;
             builder.overrides(overrides);
         }
 
-        for entry in builder.build() {
-            match entry {
-                Ok(entry) => {
-                    let path = entry.path();
+        let (tx, rx) = mpsc::channel::<(PathBuf, Vec<TodoItem>)>();
+        let parser = &self.parser;
 
-                    if path.is_dir() {
-                        continue;
-                    }
+        builder.build_parallel().run(|| {
+            let parser = parser.clone();
+            let tx = tx.clone();
 
-                    if let Some(file_type) = entry.file_type()
-                        && !file_type.is_file()
-                    {
-                        continue;
-                    }
+            Box::new(move |entry| {
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(_) => return WalkState::Continue,
+                };
 
-                    match self.parse_file(path) {
-                        Ok(items) => {
-                            result.add_file(path.to_path_buf(), items);
-                        }
-                        Err(_) => {
-                            result.summary.files_scanned += 1;
-                        }
-                    }
+                let path = entry.path();
+
+                if path.is_dir() {
+                    return WalkState::Continue;
                 }
-                Err(_) => {
-                    continue;
+
+                if let Some(file_type) = entry.file_type()
+                    && !file_type.is_file()
+                {
+                    return WalkState::Continue;
                 }
-            }
+
+                // A parse error is treated the same as zero matches: the
+                // file still counts as scanned, but nothing is stored.
+                let items = parser.parse_file(path).unwrap_or_default();
+                let _ = tx.send((path.to_path_buf(), items));
+
+                WalkState::Continue
+            })
+        });
+
+        // Drop the original sender so the `rx` iterator below ends once
+        // every worker thread (and its cloned sender) has finished.
+        drop(tx);
+        for (path, items) in rx {
+            result.add_file(path, items);
         }
 
         result.summary.duration_ms = start.elapsed().as_millis();
@@ -119,9 +144,263 @@ impl Scanner {
         Ok(result)
     }
 
-    fn parse_file(&self, path: &Path) -> Result<Vec<TodoItem>> {
-        self.parser
-            .parse_file(path)
-            .wrap_err_with(|| format!("Failed to parse file: {}", path.display()))
+    /// Returns the cached include/exclude [`Override`] set, building and
+    /// caching it on first use.
+    fn build_overrides(&self, root: &Path) -> Result<Override> {
+        if let Some(overrides) = self.overrides.get() {
+            return Ok(overrides.clone());
+        }
+
+        let mut override_builder = OverrideBuilder::new(root);
+        for pattern in &self.options.include {
+            override_builder
+                .add(pattern)
+                .wrap_err_with(|| format!("Invalid include pattern: {}", pattern))?;
+        }
+
+        for pattern in &self.options.exclude {
+            let exclude_pattern = format!("!{}", pattern);
+            override_builder
+                .add(&exclude_pattern)
+                .wrap_err_with(|| format!("Invalid exclude pattern: {}", pattern))?;
+        }
+
+        let overrides = override_builder.build()?;
+        // Best-effort: if another thread raced us to set it, keep theirs.
+        let _ = self.overrides.set(overrides.clone());
+
+        Ok(overrides)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::TodoParser;
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("todo_tree_scanner_test_{name}_{unique}"));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    fn parser() -> TodoParser {
+        TodoParser::new(&["TODO".to_string(), "FIXME".to_string()], true)
+    }
+
+    fn scanner(options: ScanOptions) -> Scanner {
+        Scanner::new(parser(), options)
+    }
+
+    #[test]
+    fn default_options_respect_gitignore_and_no_limits() {
+        let options = ScanOptions::default();
+        assert!(options.respect_gitignore);
+        assert_eq!(options.max_depth, 0);
+        assert_eq!(options.threads, 0);
+        assert!(!options.hidden);
+        assert!(!options.follow_links);
+        assert!(options.include.is_empty());
+        assert!(options.exclude.is_empty());
+    }
+
+    #[test]
+    fn scan_finds_todos_and_counts_all_files() {
+        let dir = temp_dir("basic");
+        fs::write(dir.join("a.rs"), "// TODO: fix this\nfn main() {}\n").unwrap();
+        fs::write(dir.join("b.rs"), "fn main() {}\n").unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+        assert_eq!(result.summary.files_with_todos, 1);
+        assert_eq!(result.summary.files_scanned, 2);
+    }
+
+    #[test]
+    fn scan_errors_on_nonexistent_path() {
+        let dir =
+            std::env::temp_dir().join("todo_tree_scanner_test_missing_dir_definitely_not_here");
+        let result = scanner(ScanOptions::default()).scan(&dir);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn scan_skips_broken_symlinks() {
+        let dir = temp_dir("broken_symlink");
+        fs::write(dir.join("real.rs"), "// TODO: real file\n").unwrap();
+        std::os::unix::fs::symlink(dir.join("does_not_exist.rs"), dir.join("dangling.rs")).unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_respects_include_patterns() {
+        let dir = temp_dir("include");
+        fs::write(dir.join("a.rs"), "// TODO: rust file\n").unwrap();
+        fs::write(dir.join("b.py"), "# TODO: python file\n").unwrap();
+
+        let options = ScanOptions {
+            include: vec!["*.rs".to_string()],
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_respects_exclude_patterns() {
+        let dir = temp_dir("exclude");
+        fs::write(dir.join("a.rs"), "// TODO: keep\n").unwrap();
+        fs::write(dir.join("b.rs"), "// TODO: drop\n").unwrap();
+
+        let options = ScanOptions {
+            exclude: vec!["b.rs".to_string()],
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_errors_on_invalid_include_pattern() {
+        let dir = temp_dir("bad_pattern");
+
+        let options = ScanOptions {
+            include: vec!["[".to_string()],
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir);
+        let _ = fs::remove_dir_all(&dir);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn scan_skips_hidden_files_by_default() {
+        let dir = temp_dir("hidden");
+        fs::write(dir.join(".hidden.rs"), "// TODO: hidden\n").unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 0);
+    }
+
+    #[test]
+    fn scan_includes_hidden_files_when_enabled() {
+        let dir = temp_dir("hidden_enabled");
+        fs::write(dir.join(".hidden.rs"), "// TODO: hidden\n").unwrap();
+
+        let options = ScanOptions {
+            hidden: true,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_respects_max_depth() {
+        let dir = temp_dir("depth");
+        let nested = dir.join("nested");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(dir.join("top.rs"), "// TODO: top\n").unwrap();
+        fs::write(nested.join("deep.rs"), "// TODO: deep\n").unwrap();
+
+        let options = ScanOptions {
+            max_depth: 1,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_counts_unparseable_files_as_scanned() {
+        let dir = temp_dir("bad_utf8");
+        fs::write(dir.join("bad.rs"), [0xFF, 0xFE, 0xFD]).unwrap();
+
+        let result = scanner(ScanOptions::default()).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.files_scanned, 1);
+        assert_eq!(result.summary.total_count, 0);
+    }
+
+    #[test]
+    fn scan_uses_custom_thread_count() {
+        let dir = temp_dir("threads");
+        fs::write(dir.join("a.rs"), "// TODO: threaded\n").unwrap();
+
+        let options = ScanOptions {
+            threads: 2,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_reuses_cached_overrides_across_repeated_calls() {
+        let dir = temp_dir("reused_overrides");
+        fs::write(dir.join("a.rs"), "// TODO: rust file\n").unwrap();
+        fs::write(dir.join("b.py"), "# TODO: python file\n").unwrap();
+
+        let options = ScanOptions {
+            include: vec!["*.rs".to_string()],
+            ..Default::default()
+        };
+        let s = scanner(options);
+
+        // The `Override` set is built and cached on the first call; a
+        // second call on the same `Scanner` must reuse it and produce the
+        // same result rather than rebuilding (or erroring).
+        let first = s.scan(&dir).unwrap();
+        let second = s.scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(first.summary.total_count, 1);
+        assert_eq!(second.summary.total_count, 1);
+    }
+
+    #[test]
+    fn scan_finds_todos_across_many_files_in_parallel() {
+        let dir = temp_dir("parallel_many_files");
+        for i in 0..50 {
+            fs::write(dir.join(format!("f{i}.rs")), format!("// TODO: item {i}\n")).unwrap();
+        }
+
+        let options = ScanOptions {
+            threads: 4,
+            ..Default::default()
+        };
+        let result = scanner(options).scan(&dir).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert_eq!(result.summary.total_count, 50);
+        assert_eq!(result.summary.files_with_todos, 50);
+        assert_eq!(result.summary.files_scanned, 50);
     }
 }

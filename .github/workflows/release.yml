@@ -37,8 +37,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -63,7 +61,7 @@ jobs:
           echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
 
       - name: Build release binary
-        run: cargo build --release --target ${{ matrix.target }} -p todo-tree
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create archive (Unix)
         if: runner.os != 'Windows'
@@ -86,19 +84,11 @@ jobs:
           Copy-Item LICENSE dist/todo-tree-${{ matrix.target }}/
           Compress-Archive -Path dist/todo-tree-${{ matrix.target }} -DestinationPath dist/todo-tree-${{ matrix.target }}.zip
 
-      - name: Upload artifact (Unix)
-        if: runner.os != 'Windows'
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
           name: todo-tree-${{ matrix.target }}
-          path: dist/todo-tree-${{ matrix.target }}.tar.gz
-
-      - name: Upload artifact (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v6
-        with:
-          name: todo-tree-${{ matrix.target }}
-          path: dist/todo-tree-${{ matrix.target }}.zip
+          path: dist/todo-tree-${{ matrix.target }}.*
 
   release:
     name: Create Release
@@ -110,8 +100,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        with:
-          submodules: true
 
       - name: Download all artifacts
         uses: actions/download-artifact@v7

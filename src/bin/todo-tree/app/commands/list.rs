@@ -1,15 +1,13 @@
-use super::{load_config, sort_results};
-use crate::{
-    cli,
-    config::CliOptions,
-    parser::TodoParser,
-    printer::{OutputFormat, PrintOptions, Printer},
-    scanner::{ScanOptions, Scanner},
-};
+use super::load_config;
+use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
+use todo_tree::config::CliOptions;
+use todo_tree::parser::TodoParser;
+use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
+use todo_tree::scanner::{ScanOptions, Scanner};
 
-pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
+pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
     let path = path
         .canonicalize()
@@ -21,7 +19,7 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
         include: args.include.clone(),
         exclude: args.exclude.clone(),
         json: args.json,
-        flat: args.flat,
+        flat: true,
         no_color: global.no_color,
         ignore_case: args.ignore_case,
         no_require_colon: args.no_require_colon,
@@ -44,25 +42,21 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scan_options = ScanOptions {
         include: config.include.clone(),
         exclude: config.exclude.clone(),
-        max_depth: args.depth,
-        follow_links: args.follow_links,
-        hidden: args.hidden,
-        threads: 0,
-        respect_gitignore: true,
+        ..Default::default()
     };
 
     let scanner = Scanner::new(parser, scan_options);
     let mut result = scanner.scan(&path)?;
 
-    sort_results(&mut result, args.sort);
+    if let Some(filter_tag) = &args.filter {
+        result = result.filter_by_tag(filter_tag);
+    }
 
     let print_options = PrintOptions {
         format: if args.json {
             OutputFormat::Json
-        } else if args.flat {
-            OutputFormat::Flat
         } else {
-            OutputFormat::Tree
+            OutputFormat::Flat
         },
         colored: !global.no_color,
         show_line_numbers: true,
@@ -70,7 +64,7 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
         clickable_links: !global.no_color,
         base_path: Some(path),
         show_summary: !args.json,
-        group_by_tag: args.group_by_tag,
+        group_by_tag: false,
     };
 
     let printer = Printer::new(print_options);
