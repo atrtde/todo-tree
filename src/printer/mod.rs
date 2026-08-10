@@ -78,7 +78,7 @@ mod tests {
                 column: 1,
                 line_content: None,
                 author: None,
-                priority: crate::core::Priority::Medium,
+                priority: crate::core::TodoPriority::Medium,
             }],
         );
         result

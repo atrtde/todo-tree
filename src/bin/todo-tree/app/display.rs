@@ -1,5 +1,5 @@
 use colored::Color;
-use todo_tree::core::Priority;
+use todo_tree::core::TodoPriority;
 
 pub(crate) fn format_duration(ms: u128) -> String {
     if ms < 1000 {
@@ -9,11 +9,11 @@ pub(crate) fn format_duration(ms: u128) -> String {
     }
 }
 
-pub(crate) fn priority_to_color(priority: Priority) -> Color {
+pub(crate) fn priority_to_color(priority: TodoPriority) -> Color {
     match priority {
-        Priority::Critical => Color::Red,
-        Priority::High => Color::Yellow,
-        Priority::Medium => Color::Cyan,
-        Priority::Low => Color::Green,
+        TodoPriority::Critical => Color::Red,
+        TodoPriority::High => Color::Yellow,
+        TodoPriority::Medium => Color::Cyan,
+        TodoPriority::Low => Color::Green,
     }
 }

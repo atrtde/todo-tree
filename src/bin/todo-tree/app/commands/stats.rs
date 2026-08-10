@@ -4,7 +4,7 @@ use crate::app::display::{format_duration, priority_to_color};
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
 use serde_json::json;
-use todo_tree::core::Priority;
+use todo_tree::core::TodoPriority;
 use todo_tree::parser::TodoParser;
 use todo_tree::scanner::{ScanOptions, Scanner};
 
@@ -74,7 +74,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
             if global.no_color {
                 println!("  {:<8} {:>4} ({:>5.1}%) {}", tag, count, percentage, bar);
             } else {
-                let color = priority_to_color(Priority::from_tag(tag));
+                let color = priority_to_color(TodoPriority::from_tag(tag));
                 println!(
                     "  {:<8} {:>4} ({:>5.1}%) {}",
                     tag.color(color),

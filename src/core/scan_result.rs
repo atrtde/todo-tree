@@ -154,7 +154,7 @@ impl ScanResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::Priority;
+    use crate::core::TodoPriority;
 
     fn item(tag: &str, line: usize) -> TodoItem {
         TodoItem {
@@ -164,7 +164,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: None,
-            priority: Priority::from_tag(tag),
+            priority: TodoPriority::from_tag(tag),
         }
     }
 

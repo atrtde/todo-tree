@@ -1,6 +1,6 @@
 //! A single matched TODO-style comment.
 
-use super::priority::Priority;
+use super::todo_priority::TodoPriority;
 use serde::{Deserialize, Serialize};
 
 /// A single matched TODO-style comment.
@@ -21,7 +21,7 @@ pub struct TodoItem {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub author: Option<String>,
     /// The priority derived from the tag.
-    pub priority: Priority,
+    pub priority: TodoPriority,
 }
 
 impl TodoItem {
@@ -47,7 +47,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: author.map(str::to_string),
-            priority: Priority::Medium,
+            priority: TodoPriority::Medium,
         }
     }
 

@@ -1,6 +1,6 @@
 //! Regex-based parsing of TODO-style comments out of file content.
 
-use crate::core::{Priority, TodoItem};
+use crate::core::{TodoItem, TodoPriority};
 use memchr::{memchr2, memmem};
 use regex::{Regex, RegexBuilder};
 use std::path::Path;
@@ -130,7 +130,7 @@ impl TodoParser {
                     .unwrap_or(tag)
             };
 
-            let priority = Priority::from_tag(&normalized_tag);
+            let priority = TodoPriority::from_tag(&normalized_tag);
 
             return Some(TodoItem {
                 tag: normalized_tag,
@@ -275,7 +275,7 @@ mod tests {
             item.line_content.as_deref(),
             Some(" TODO: write more tests")
         );
-        assert_eq!(item.priority, Priority::from_tag("TODO"));
+        assert_eq!(item.priority, TodoPriority::from_tag("TODO"));
     }
 
     #[test]
@@ -290,7 +290,7 @@ mod tests {
         assert_eq!(item.message, "handle edge case");
         assert_eq!(item.line, 3);
         assert_eq!(item.column, 2);
-        assert_eq!(item.priority, Priority::from_tag("FIXME"));
+        assert_eq!(item.priority, TodoPriority::from_tag("FIXME"));
     }
 
     #[test]
@@ -322,7 +322,7 @@ mod tests {
         // to the configured spelling from self.tags.
         assert_eq!(item.tag, "TODO");
         assert_eq!(item.message, "lower-case tag");
-        assert_eq!(item.priority, Priority::from_tag("TODO"));
+        assert_eq!(item.priority, TodoPriority::from_tag("TODO"));
     }
 
     #[test]
@@ -335,7 +335,7 @@ mod tests {
             .expect("expected ToDo item");
 
         assert_eq!(item.tag, "ToDo");
-        assert_eq!(item.priority, Priority::from_tag("ToDo"));
+        assert_eq!(item.priority, TodoPriority::from_tag("ToDo"));
     }
 
     #[test]
@@ -538,7 +538,7 @@ ignore
         assert_eq!(item.author.as_deref(), Some("alice"));
         assert_eq!(item.message, "custom format works");
         assert_eq!(item.line, 10);
-        assert_eq!(item.priority, Priority::from_tag("TODO"));
+        assert_eq!(item.priority, TodoPriority::from_tag("TODO"));
     }
 
     #[test]

@@ -115,7 +115,7 @@ impl JsonOutput {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{Priority, TodoItem};
+    use crate::core::{TodoItem, TodoPriority};
     use std::path::PathBuf;
 
     fn item(tag: &str, author: Option<&str>) -> TodoItem {
@@ -126,7 +126,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: author.map(str::to_string),
-            priority: Priority::from_tag(tag),
+            priority: TodoPriority::from_tag(tag),
         }
     }
 

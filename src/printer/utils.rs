@@ -1,7 +1,7 @@
 //! Path formatting, terminal hyperlink, and tag-coloring helpers.
 
 use super::options::PrintOptions;
-use crate::core::Priority;
+use crate::core::TodoPriority;
 use colored::{Color, Colorize};
 use std::path::Path;
 
@@ -13,12 +13,12 @@ pub(crate) fn format_duration(ms: u128) -> String {
     }
 }
 
-pub(crate) fn priority_to_color(priority: Priority) -> Color {
+pub(crate) fn priority_to_color(priority: TodoPriority) -> Color {
     match priority {
-        Priority::Critical => Color::Red,
-        Priority::High => Color::Yellow,
-        Priority::Medium => Color::Cyan,
-        Priority::Low => Color::Green,
+        TodoPriority::Critical => Color::Red,
+        TodoPriority::High => Color::Yellow,
+        TodoPriority::Medium => Color::Cyan,
+        TodoPriority::Low => Color::Green,
     }
 }
 
@@ -86,14 +86,14 @@ pub fn make_line_link(path: &Path, line: usize, options: &PrintOptions) -> Optio
     Some(link)
 }
 
-/// Colors `tag` by its derived [`Priority`], or returns it unchanged if
+/// Colors `tag` by its derived [`TodoPriority`], or returns it unchanged if
 /// `options.colored` is off.
 pub fn colorize_tag(tag: &str, options: &PrintOptions) -> String {
     if !options.colored {
         return tag.to_string();
     }
 
-    let color = priority_to_color(Priority::from_tag(tag));
+    let color = priority_to_color(TodoPriority::from_tag(tag));
     tag.color(color).bold().to_string()
 }
 
@@ -156,10 +156,10 @@ mod tests {
 
     #[test]
     fn priority_to_color_maps_every_priority() {
-        assert_eq!(priority_to_color(Priority::Critical), Color::Red);
-        assert_eq!(priority_to_color(Priority::High), Color::Yellow);
-        assert_eq!(priority_to_color(Priority::Medium), Color::Cyan);
-        assert_eq!(priority_to_color(Priority::Low), Color::Green);
+        assert_eq!(priority_to_color(TodoPriority::Critical), Color::Red);
+        assert_eq!(priority_to_color(TodoPriority::High), Color::Yellow);
+        assert_eq!(priority_to_color(TodoPriority::Medium), Color::Cyan);
+        assert_eq!(priority_to_color(TodoPriority::Low), Color::Green);
     }
 
     #[test]

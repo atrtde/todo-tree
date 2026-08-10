@@ -21,4 +21,4 @@ pub mod printer;
 /// Directory walking and file parsing orchestration.
 pub mod scanner;
 
-pub use crate::core::{Priority, ScanResult, ScanSummary, TodoItem};
+pub use crate::core::{ScanResult, ScanSummary, TodoItem, TodoPriority};

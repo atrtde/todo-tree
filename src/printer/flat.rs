@@ -74,7 +74,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: None,
-            priority: crate::core::Priority::from_tag(tag),
+            priority: crate::core::TodoPriority::from_tag(tag),
         }
     }
 

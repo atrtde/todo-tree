@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`todo_tree::core::types` split**: replaced by `todo_tree::core::{todo_item, file_result, summary, scan_result}`. The re-exported types (`TodoItem`, `FileResult`, `ScanSummary`, `ScanResult`) are unchanged at `todo_tree::core::*` and `todo_tree::*`.
 - **Global config directory resolution**: now honors `$XDG_CONFIG_HOME` on every platform (previously only the OS-default config directory was checked, and XDG wasn't consulted on macOS/Windows at all).
 - **`dirs` replaces `directories-next`** for platform/XDG directory resolution.
+- **`Priority` renamed to `TodoPriority`**: was `todo_tree::core::Priority` (`src/core/priority.rs`), now `todo_tree::core::TodoPriority` (`src/core/todo_priority.rs`).
 
 ### Changed
 - Reorganized `src/` so the `todo_tree` library and the `todo-tree`/`tt` binaries live in clearly separated trees (`src/` for the library, `src/bin/todo-tree/` and `src/bin/tt/` for the binaries). `tt` shares `todo-tree`'s CLI implementation via `#[path]`, with no runtime indirection.
