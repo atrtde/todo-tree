@@ -167,9 +167,11 @@ impl Config {
         if cli.json {
             self.json = true;
         }
+
         if cli.flat {
             self.flat = true;
         }
+
         if cli.no_color {
             self.no_color = true;
         }
