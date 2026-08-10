@@ -1,6 +1,7 @@
 //! JSON rendering.
 
 use super::options::PrintOptions;
+use super::utils::format_path;
 use crate::core::ScanResult;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -78,15 +79,7 @@ impl JsonOutput {
             .sorted_files()
             .iter()
             .map(|(path, items)| {
-                let display_path = if options.full_paths {
-                    path.display().to_string()
-                } else if let Some(base) = &options.base_path {
-                    path.strip_prefix(base)
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_else(|_| path.display().to_string())
-                } else {
-                    path.display().to_string()
-                };
+                let display_path = format_path(path, options);
 
                 JsonFileEntry {
                     path: display_path,
