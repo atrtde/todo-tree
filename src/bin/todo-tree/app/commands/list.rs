@@ -1,4 +1,4 @@
-use super::load_config;
+use super::{is_ci, load_config};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
@@ -52,18 +52,20 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         result = result.filter_by_tag(filter_tag);
     }
 
+    let format = if args.json || is_ci() {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Flat
+    };
+
     let print_options = PrintOptions {
-        format: if args.json {
-            OutputFormat::Json
-        } else {
-            OutputFormat::Flat
-        },
+        format,
         colored: !global.no_color,
         show_line_numbers: true,
         full_paths: false,
         clickable_links: !global.no_color,
         base_path: Some(path),
-        show_summary: !args.json,
+        show_summary: format != OutputFormat::Json,
         group_by_tag: false,
     };
 

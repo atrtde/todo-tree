@@ -1,4 +1,4 @@
-use super::{load_config, sort_results};
+use super::{is_ci, load_config, sort_results};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
@@ -54,20 +54,24 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
 
     sort_results(&mut result, args.sort);
 
+    let format = if args.json {
+        OutputFormat::Json
+    } else if args.flat {
+        OutputFormat::Flat
+    } else if is_ci() {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Tree
+    };
+
     let print_options = PrintOptions {
-        format: if args.json {
-            OutputFormat::Json
-        } else if args.flat {
-            OutputFormat::Flat
-        } else {
-            OutputFormat::Tree
-        },
+        format,
         colored: !global.no_color,
         show_line_numbers: true,
         full_paths: false,
         clickable_links: !global.no_color,
         base_path: Some(path),
-        show_summary: !args.json,
+        show_summary: format != OutputFormat::Json,
         group_by_tag: args.group_by_tag,
     };
 

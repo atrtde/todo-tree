@@ -1,4 +1,4 @@
-use super::load_config;
+use super::{is_ci, load_config};
 use crate::app::cli;
 use crate::app::display::{format_duration, priority_to_color};
 use color_eyre::eyre::{Result, WrapErr};
@@ -24,7 +24,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scanner = Scanner::new(parser, ScanOptions::default());
     let result = scanner.scan(&path)?;
 
-    if args.json {
+    if args.json || is_ci() {
         let stats = json!({
             "total_items": result.summary.total_count,
             "files_with_todos": result.summary.files_with_todos,

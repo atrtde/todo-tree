@@ -1,4 +1,4 @@
-use super::{load_config, sort_results};
+use super::{is_ci, load_config, sort_results};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use ignore::Match;
@@ -63,20 +63,24 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     let filter = EventFilter::build(&path, &scan_options)?;
     let scanner = Scanner::new(parser, scan_options);
 
+    let format = if scan_args.json {
+        OutputFormat::Json
+    } else if scan_args.flat {
+        OutputFormat::Flat
+    } else if is_ci() {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Tree
+    };
+
     let print_options = PrintOptions {
-        format: if scan_args.json {
-            OutputFormat::Json
-        } else if scan_args.flat {
-            OutputFormat::Flat
-        } else {
-            OutputFormat::Tree
-        },
+        format,
         colored: !global.no_color,
         show_line_numbers: true,
         full_paths: false,
         clickable_links: !global.no_color,
         base_path: Some(path.clone()),
-        show_summary: !scan_args.json,
+        show_summary: format != OutputFormat::Json,
         group_by_tag: scan_args.group_by_tag,
     };
     let printer = Printer::new(print_options);
