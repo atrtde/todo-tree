@@ -202,8 +202,26 @@ pub struct StatsArgs {
         help = "Tags to search for (comma-separated)"
     )]
     pub tags: Option<Vec<String>>,
+    #[arg(
+        short,
+        long,
+        value_delimiter = ',',
+        help = "File patterns to include (glob patterns, comma-separated)"
+    )]
+    pub include: Option<Vec<String>>,
+    #[arg(
+        short,
+        long,
+        value_delimiter = ',',
+        help = "File patterns to exclude (glob patterns, comma-separated)"
+    )]
+    pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
+    #[arg(long, help = "Ignore case when matching tags")]
+    pub ignore_case: bool,
+    #[arg(long, help = "Allow tags without a trailing colon")]
+    pub no_require_colon: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]

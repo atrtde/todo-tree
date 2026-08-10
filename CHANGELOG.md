@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Clickable hyperlinks were previously emitted based on terminal-identifying env vars alone, with no check that stdout was actually a terminal; redirecting or piping `todo-tree`/`tt` output (e.g. `tt scan > out.txt`, `tt scan | grep TODO`) could embed raw OSC 8 escape codes in the non-interactive output. Detection now also requires stdout to be a TTY (or `FORCE_HYPERLINK` to be set).
+- `tt stats` always matched tags case-insensitively, hardcoded and ignoring both `.todorc`'s `ignore_case` and (nonexistent) CLI overrides, unlike `scan`/`list`/`watch`, which default to case-sensitive matching. `tt stats` now shares the same config/CLI-driven matching (`--include`, `--exclude`, `--ignore-case`, `--no-require-colon`) and defaults as the other commands.
 
 ### Added
 - `scan`/`tt` (default), `list`, `watch`, and `stats` now default to JSON output when a `CI` environment variable is set (the convention used by GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers), instead of the human-oriented tree/flat/text output used locally. An explicit `--json` or `--flat` flag always takes precedence over this auto-detection.
