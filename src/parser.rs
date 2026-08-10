@@ -1,6 +1,6 @@
 //! Regex-based parsing of TODO-style comments out of file content.
 
-use crate::core::{Priority, TodoItem};
+use crate::core::{TodoItem, TodoPriority};
 use memchr::{memchr2, memmem};
 use regex::{Regex, RegexBuilder};
 use std::path::Path;
@@ -11,7 +11,7 @@ use std::path::Path;
 /// that appear after common comment markers.
 ///
 /// Pattern breakdown:
-/// - `(//|#|<!--|;|/\*|\*|--)`  - Comment markers for most languages
+/// - `(//|#|<!--|;|/\*|\*|--|(?:^|\s)::)`  - Comment markers for most languages
 /// - `\s*`                       - Optional whitespace after comment marker
 /// - `($TAGS)`                   - The tag to match (placeholder, replaced at runtime)
 /// - `(?:\(([^)]+)\))?`          - Optional author in parentheses
@@ -31,13 +31,16 @@ use std::path::Path;
 ///   """   - Python docstrings
 ///   '''   - Python docstrings
 ///   REM   - Batch files
+///   ::    - Batch files, Lua block-comment idiom (line-start or after whitespace only)
 /// ```
 ///
-/// Note: `::` was removed from default comment markers to prevent false positives
-/// in Rust, C++, and other languages where `::` is used as a scope resolution operator
-/// (e.g., `std::io::Error`).
+/// `::` is only recognized as a marker when it's at the start of the line or
+/// preceded by whitespace (the `regex` crate has no lookbehind, so this is
+/// baked into the alternative itself rather than a separate assertion).
+/// `std::io::Error` never matches: every `::` in it is preceded by an
+/// identifier character, not whitespace or line-start.
 pub const DEFAULT_REGEX: &str =
-    r#"(//|#|<!--|;|/\*|\*|--|%|"""|'''|REM\s)\s*($TAGS)(?:\(([^)]+)\))?:(.*)"#;
+    r#"(//|#|<!--|;|/\*|\*|--|%|"""|'''|REM\s|(?:^|\s)::)\s*($TAGS)(?:\(([^)]+)\))?:(.*)"#;
 
 /// Parses TODO-style tags out of file content using a configurable regex.
 #[derive(Debug, Clone)]
@@ -127,7 +130,7 @@ impl TodoParser {
                     .unwrap_or(tag)
             };
 
-            let priority = Priority::from_tag(&normalized_tag);
+            let priority = TodoPriority::from_tag(&normalized_tag);
 
             return Some(TodoItem {
                 tag: normalized_tag,
@@ -272,7 +275,7 @@ mod tests {
             item.line_content.as_deref(),
             Some(" TODO: write more tests")
         );
-        assert_eq!(item.priority, Priority::from_tag("TODO"));
+        assert_eq!(item.priority, TodoPriority::from_tag("TODO"));
     }
 
     #[test]
@@ -287,7 +290,7 @@ mod tests {
         assert_eq!(item.message, "handle edge case");
         assert_eq!(item.line, 3);
         assert_eq!(item.column, 2);
-        assert_eq!(item.priority, Priority::from_tag("FIXME"));
+        assert_eq!(item.priority, TodoPriority::from_tag("FIXME"));
     }
 
     #[test]
@@ -319,7 +322,7 @@ mod tests {
         // to the configured spelling from self.tags.
         assert_eq!(item.tag, "TODO");
         assert_eq!(item.message, "lower-case tag");
-        assert_eq!(item.priority, Priority::from_tag("TODO"));
+        assert_eq!(item.priority, TodoPriority::from_tag("TODO"));
     }
 
     #[test]
@@ -332,7 +335,7 @@ mod tests {
             .expect("expected ToDo item");
 
         assert_eq!(item.tag, "ToDo");
-        assert_eq!(item.priority, Priority::from_tag("ToDo"));
+        assert_eq!(item.priority, TodoPriority::from_tag("ToDo"));
     }
 
     #[test]
@@ -535,7 +538,7 @@ ignore
         assert_eq!(item.author.as_deref(), Some("alice"));
         assert_eq!(item.message, "custom format works");
         assert_eq!(item.line, 10);
-        assert_eq!(item.priority, Priority::from_tag("TODO"));
+        assert_eq!(item.priority, TodoPriority::from_tag("TODO"));
     }
 
     #[test]
@@ -555,6 +558,50 @@ ignore
         let hash = hash.unwrap();
         assert_eq!(hash.tag, "FIXME");
         assert_eq!(hash.message, "fix the bug");
+    }
+
+    #[test]
+    fn default_regex_matches_double_colon_at_line_start() {
+        let parser = TodoParser::with_options(&tags(), false, true, None);
+
+        let item = parser
+            .parse_line(":: TODO: refactor this", 1)
+            .expect("line-start :: should match");
+
+        assert_eq!(item.tag, "TODO");
+        assert_eq!(item.message, "refactor this");
+    }
+
+    #[test]
+    fn default_regex_matches_double_colon_after_whitespace() {
+        let parser = TodoParser::with_options(&tags(), false, true, None);
+
+        let item = parser
+            .parse_line("let x = 1; :: TODO: cleanup", 1)
+            .expect(":: preceded by whitespace should match");
+
+        assert_eq!(item.tag, "TODO");
+        assert_eq!(item.message, "cleanup");
+    }
+
+    #[test]
+    fn default_regex_rejects_double_colon_scope_resolution() {
+        let parser = TodoParser::with_options(&tags(), false, true, None);
+
+        assert!(
+            parser.parse_line("use std::io::Error;", 1).is_none(),
+            "scope resolution must not match"
+        );
+        assert!(
+            parser
+                .parse_line("let x: std::io::TODO::Error = y;", 2)
+                .is_none(),
+            "tag directly touching a preceding :: (no space) must not match"
+        );
+        assert!(
+            parser.parse_line("Foo::Bar::Baz::new()", 3).is_none(),
+            "chained scope resolution with no tag must not match"
+        );
     }
 
     #[test]

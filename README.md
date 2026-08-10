@@ -120,9 +120,6 @@ tt tags
 
 # Show statistics
 tt stats
-
-# Create a GitHub Actions workflow
-tt workflow init
 ```
 
 ### Watch Mode
@@ -134,6 +131,12 @@ tt watch --tags TODO,FIXME --exclude "*.log"
 ```
 
 File-system events are filtered through the same `.gitignore` and `--include`/`--exclude` rules as a normal scan before a re-scan is triggered, so noise from ignored directories (`target/`, `node_modules/`, ...) doesn't cause unnecessary re-scans.
+
+### Output Formats
+
+`tt scan`/`tt` (default), `tt list`, `tt watch`, and `tt stats` render human-oriented output locally: a colored tree (or flat list for `tt list`), plus a summary block. Pass `--json` to switch any of them to machine-readable JSON, or `--flat` (`tt scan`/`tt watch` only) for a flat, ungrouped list.
+
+**CI auto-detection:** when a `CI` environment variable is set — as GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers do by default — these commands default to JSON output instead of the local tree/flat/text output, so CI logs and downstream tooling get structured data without needing `--json` on every invocation. An explicit `--json` or `--flat` flag always overrides this auto-detection.
 
 ## Configuration
 
@@ -223,24 +226,6 @@ The strict defaults (uppercase + colon required) significantly reduce false posi
 
 These defaults align with most coding conventions and help you find **intentional TODO comments**, not accidental matches.
 
-## GitHub Actions
-
-Generate a workflow file at `.github/workflows/todo-tree.yml`:
-
-```bash
-tt workflow init
-```
-
-This creates a pull request workflow that checks out the repository and runs `alexandretrotel/todo-tree-action@main` by default.
-
-Use `--force` to overwrite an existing workflow, `--path` to write the template elsewhere, or `--action` to override the generated action ref (e.g. to pin a specific release instead of `main`):
-
-```bash
-tt workflow init --force
-tt workflow init --path .github/workflows/custom-todo-tree.yml
-tt workflow init --action alexandretrotel/todo-tree-action@v1.0.3
-```
-
 ## Terminal Support
 
 ### Clickable Links
@@ -260,11 +245,9 @@ The tool generates clickable hyperlinks (OSC 8) in supported terminals:
 
 Colors are automatically enabled when outputting to a terminal. Use `--no-color` or set the [`NO_COLOR`](https://no-color.org/) environment variable to disable.
 
-## Related Projects
+## GitHub Actions
 
-### [todo-tree-action](https://github.com/alexandretrotel/todo-tree-action)
-
-A GitHub Action that automatically scans your pull requests for TODO comments and posts a summary as a PR comment. Features include:
+[todo-tree-action](https://github.com/alexandretrotel/todo-tree-action) is a GitHub Action that automatically scans your pull requests for TODO comments and posts a summary as a PR comment. Features include:
 - Scan only changed files in PRs
 - Filter to show only NEW TODOs (not in base branch)
 - Automatic PR comment with formatted results

@@ -185,6 +185,41 @@ impl Config {
         }
     }
 
+    /// Loads a config, honoring an explicit `config_path` override before
+    /// falling back to [`Config::load`]'s discovery starting at `path`, and
+    /// finally to [`Config::new`] if nothing is found anywhere.
+    pub fn load_or_default(path: &Path, config_path: Option<&Path>) -> Result<Self> {
+        if let Some(config_path) = config_path {
+            return Self::load_from_file(config_path);
+        }
+
+        match Self::load(path)? {
+            Some(config) => Ok(config),
+            None => Ok(Self::new()),
+        }
+    }
+
+    /// Saves this config to whichever `.todorc`/`.todorc.json`/`.todorc.toml`
+    /// already exists in the current directory, or `.todorc.json` if none
+    /// do.
+    pub fn save_in_cwd(&self) -> Result<()> {
+        let current_dir = std::env::current_dir()?;
+        let config_files = [
+            current_dir.join(".todorc"),
+            current_dir.join(".todorc.json"),
+            current_dir.join(".todorc.toml"),
+        ];
+
+        for path in &config_files {
+            if path.exists() {
+                return self.save(path);
+            }
+        }
+
+        let path = current_dir.join(".todorc.json");
+        self.save(&path)
+    }
+
     /// Writes this config to `path`, choosing TOML or JSON based on its
     /// extension (JSON if unrecognized).
     pub fn save(&self, path: &Path) -> Result<()> {

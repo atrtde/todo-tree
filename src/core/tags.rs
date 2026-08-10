@@ -1,6 +1,6 @@
 //! The built-in tag catalog.
 
-use super::priority::Priority;
+use super::todo_priority::TodoPriority;
 
 /// A single recognized tag: its name, human-readable description, and
 /// default priority.
@@ -11,7 +11,7 @@ pub struct TagDefinition {
     /// A short human-readable description of what the tag means.
     pub description: &'static str,
     /// The tag's default priority.
-    pub priority: Priority,
+    pub priority: TodoPriority,
 }
 
 /// The default set of recognized tags, grouped by priority.
@@ -20,90 +20,90 @@ pub const DEFAULT_TAGS: &[TagDefinition] = &[
     TagDefinition {
         name: "TODO",
         description: "General TODO items",
-        priority: Priority::Medium,
+        priority: TodoPriority::Medium,
     },
     TagDefinition {
         name: "WIP",
         description: "Work in progress",
-        priority: Priority::Medium,
+        priority: TodoPriority::Medium,
     },
     TagDefinition {
         name: "MAYBE",
         description: "Potential future work",
-        priority: Priority::Medium,
+        priority: TodoPriority::Medium,
     },
     // Critical
     TagDefinition {
         name: "FIXME",
         description: "Items that need fixing",
-        priority: Priority::Critical,
+        priority: TodoPriority::Critical,
     },
     TagDefinition {
         name: "BUG",
         description: "Known bugs",
-        priority: Priority::Critical,
+        priority: TodoPriority::Critical,
     },
     TagDefinition {
         name: "ERROR",
         description: "Error handling needed",
-        priority: Priority::Critical,
+        priority: TodoPriority::Critical,
     },
     // High
     TagDefinition {
         name: "HACK",
         description: "Hacky solutions",
-        priority: Priority::High,
+        priority: TodoPriority::High,
     },
     TagDefinition {
         name: "WARN",
         description: "Warnings",
-        priority: Priority::High,
+        priority: TodoPriority::High,
     },
     TagDefinition {
         name: "WARNING",
         description: "Warning about potential issues",
-        priority: Priority::High,
+        priority: TodoPriority::High,
     },
     TagDefinition {
         name: "FIX",
         description: "Quick fix needed",
-        priority: Priority::High,
+        priority: TodoPriority::High,
     },
     // Low priority
     TagDefinition {
         name: "NOTE",
         description: "Notes and documentation",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
     TagDefinition {
         name: "XXX",
         description: "Items requiring attention",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
     TagDefinition {
         name: "INFO",
         description: "Informational notes",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
     TagDefinition {
         name: "DOCS",
         description: "Documentation needed",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
     TagDefinition {
         name: "PERF",
         description: "Performance issues",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
     TagDefinition {
         name: "TEST",
         description: "Test-related items",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
     TagDefinition {
         name: "IDEA",
         description: "Ideas for future consideration",
-        priority: Priority::Low,
+        priority: TodoPriority::Low,
     },
 ];
 
@@ -135,7 +135,7 @@ mod tests {
     fn find_tag_is_case_insensitive() {
         let tag = find_tag("todo").expect("TODO should be found");
         assert_eq!(tag.name, "TODO");
-        assert_eq!(tag.priority, Priority::Medium);
+        assert_eq!(tag.priority, TodoPriority::Medium);
     }
 
     #[test]

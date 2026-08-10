@@ -46,8 +46,6 @@ pub enum Command {
     Tags(TagsArgs),
     #[command(about = "Create a default configuration file")]
     Init(InitArgs),
-    #[command(about = "Manage GitHub Actions workflow templates")]
-    Workflow(WorkflowArgs),
     #[command(about = "Show summary stats for TODO matches")]
     Stats(StatsArgs),
 }
@@ -194,37 +192,6 @@ pub struct InitArgs {
 }
 
 #[derive(Args, Debug, Clone)]
-pub struct WorkflowArgs {
-    #[command(subcommand)]
-    pub command: WorkflowCommands,
-}
-
-#[derive(Subcommand, Debug, Clone)]
-pub enum WorkflowCommands {
-    #[command(about = "Create a GitHub Actions workflow for todo-tree-action")]
-    Init(WorkflowInitArgs),
-}
-
-#[derive(Args, Debug, Clone)]
-pub struct WorkflowInitArgs {
-    #[arg(short, long, help = "Overwrite the workflow file if it exists")]
-    pub force: bool,
-
-    #[arg(
-        long,
-        value_hint = ValueHint::FilePath,
-        help = "Path to the workflow file"
-    )]
-    pub path: Option<PathBuf>,
-
-    #[arg(
-        long,
-        help = "GitHub Action reference to use in the generated workflow"
-    )]
-    pub action: Option<String>,
-}
-
-#[derive(Args, Debug, Clone)]
 pub struct StatsArgs {
     #[arg(value_hint = ValueHint::AnyPath, help = "Path to scan (defaults to current directory)")]
     pub path: Option<PathBuf>,
@@ -235,8 +202,26 @@ pub struct StatsArgs {
         help = "Tags to search for (comma-separated)"
     )]
     pub tags: Option<Vec<String>>,
+    #[arg(
+        short,
+        long,
+        value_delimiter = ',',
+        help = "File patterns to include (glob patterns, comma-separated)"
+    )]
+    pub include: Option<Vec<String>>,
+    #[arg(
+        short,
+        long,
+        value_delimiter = ',',
+        help = "File patterns to exclude (glob patterns, comma-separated)"
+    )]
+    pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
+    #[arg(long, help = "Ignore case when matching tags")]
+    pub ignore_case: bool,
+    #[arg(long, help = "Allow tags without a trailing colon")]
+    pub no_require_colon: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
@@ -248,6 +233,16 @@ pub enum SortOrder {
     Line,
     #[value(name = "priority", help = "Sort by tag priority")]
     Priority,
+}
+
+impl From<SortOrder> for todo_tree::core::SortOrder {
+    fn from(order: SortOrder) -> Self {
+        match order {
+            SortOrder::File => Self::File,
+            SortOrder::Line => Self::Line,
+            SortOrder::Priority => Self::Priority,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]

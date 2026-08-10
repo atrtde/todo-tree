@@ -11,22 +11,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Config format**: YAML config support (`.todorc.yaml`/`.todorc.yml`/`config.yaml`/`config.yml`) has been removed in favor of TOML (`.todorc.toml`/`config.toml`). The `yaml_serde` dependency is gone; `toml` has been added. JSON config (`.todorc.json`) is unaffected.
 - **`DEFAULT_REGEX` moved**: was `todo_tree::core::DEFAULT_REGEX`, now `todo_tree::parser::DEFAULT_REGEX`.
 - **Library/binary split**: CLI argument parsing and subcommand implementations moved out of the `todo_tree` library and into the `todo-tree`/`tt` binaries. The library crate no longer exposes `run()`, `cli`, or `commands` — it is now a documented, side-effect-free library (`todo_tree::{config, core, parser, printer, scanner}`) suitable for use outside the CLI.
-- **`todo_tree::utils` removed**: `format_duration`/`priority_to_color` are no longer part of the public API. They now live as crate-private helpers inside `printer`; the binaries carry their own copy for their custom (non-`Printer`) colored output.
+- **`todo_tree::display` added**: `priority_to_color` and `format_duration` are now public at `todo_tree::display::{priority_to_color, format_duration}` (previously crate-private `printer` helpers, separately duplicated in the `todo-tree`/`tt` binaries).
 - **`todo_tree::core::types` split**: replaced by `todo_tree::core::{todo_item, file_result, summary, scan_result}`. The re-exported types (`TodoItem`, `FileResult`, `ScanSummary`, `ScanResult`) are unchanged at `todo_tree::core::*` and `todo_tree::*`.
 - **Global config directory resolution**: now honors `$XDG_CONFIG_HOME` on every platform (previously only the OS-default config directory was checked, and XDG wasn't consulted on macOS/Windows at all).
 - **`dirs` replaces `directories-next`** for platform/XDG directory resolution.
+- **`Priority` renamed to `TodoPriority`**: was `todo_tree::core::Priority` (`src/core/priority.rs`), now `todo_tree::core::TodoPriority` (`src/core/todo_priority.rs`).
+- **`tt workflow` command removed**: `tt workflow init` and everything backing it (GitHub Actions workflow-template generation) is gone. Use the [`todo-tree-action`](https://github.com/alexandretrotel/todo-tree-action) GitHub Action directly in a hand-written workflow file instead.
 
 ### Changed
 - Reorganized `src/` so the `todo_tree` library and the `todo-tree`/`tt` binaries live in clearly separated trees (`src/` for the library, `src/bin/todo-tree/` and `src/bin/tt/` for the binaries). `tt` shares `todo-tree`'s CLI implementation via `#[path]`, with no runtime indirection.
 - Bumped all dependencies to their latest stable versions, pinned at `major.minor` only.
-- `tt workflow init` now defaults to `alexandretrotel/todo-tree-action@main` instead of a pinned release tag; pass `--action owner/repo@ref` to pin a specific version.
 - `Scanner::scan` now walks in parallel (`ignore::WalkBuilder::build_parallel`) across `ScanOptions::threads` workers instead of walking single-threaded; the `threads` option now does what it always claimed to.
 - `Scanner` caches its `ignore::Overrides` after the first `scan()` call instead of rebuilding them on every call, since `tt watch` reuses one `Scanner` across many re-scans.
 - `TodoParser::parse_file` does a cheap `memchr`-based byte scan for configured tags before validating UTF-8 and running the regex pass, skipping that cost entirely for files that can't match (lockfiles, bundled JS, binaries).
+- Clickable OSC 8 hyperlink detection now delegates to the `supports-hyperlinks` crate instead of a hand-rolled `TERM_PROGRAM`/`COLORTERM`/`VTE_VERSION`/`KONSOLE_VERSION` allowlist, picking up terminals (Windows Terminal, kitty, ...) and SSH/TTY handling the old allowlist didn't cover.
+
+### Fixed
+- Clickable hyperlinks were previously emitted based on terminal-identifying env vars alone, with no check that stdout was actually a terminal; redirecting or piping `todo-tree`/`tt` output (e.g. `tt scan > out.txt`, `tt scan | grep TODO`) could embed raw OSC 8 escape codes in the non-interactive output. Detection now also requires stdout to be a TTY (or `FORCE_HYPERLINK` to be set).
+- `tt stats` always matched tags case-insensitively, hardcoded and ignoring both `.todorc`'s `ignore_case` and (nonexistent) CLI overrides, unlike `scan`/`list`/`watch`, which default to case-sensitive matching. `tt stats` now shares the same config/CLI-driven matching (`--include`, `--exclude`, `--ignore-case`, `--no-require-colon`) and defaults as the other commands.
 
 ### Added
+- `scan`/`tt` (default), `list`, `watch`, and `stats` now default to JSON output when a `CI` environment variable is set (the convention used by GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers), instead of the human-oriented tree/flat/text output used locally. An explicit `--json` or `--flat` flag always takes precedence over this auto-detection.
 - `documentation = "https://docs.rs/todo-tree"` in `Cargo.toml`; the crate now builds clean under `#![warn(missing_docs)]` with full public API documentation.
 - `tt watch` (alias `tt w`) subcommand: re-scans and reprints on file changes, using `notify` + `notify-debouncer-mini` to coalesce bursts (`--debounce-ms` to tune, default 250ms). File-system events are filtered through the same `.gitignore`/`--include`/`--exclude` rules as a normal scan before triggering a re-scan, so changes under ignored directories (`target/`, `node_modules/`, ...) are skipped.
+- `::` back in `DEFAULT_REGEX` as comment marker (removed in 0.3.0 over false positives), now line-start/whitespace-gated so `std::io::Error` still won't match.
+- `todo_tree::core::SortOrder` and `ScanResult::sort_by`: result sorting (by file, line, or priority) is now part of the library's public API, not a CLI-only helper.
+- `Config::load_or_default` and `Config::save_in_cwd`: the config discovery-with-fallback and save-to-current-directory helpers used by the CLI are now public `Config` methods, usable by library consumers directly.
 
 ### CI
 - Rewrote `ci.yml` and added a dedicated `build-binaries.yml`, matching the workflow structure used in `dotfiles-manager`/`feedyourai`.

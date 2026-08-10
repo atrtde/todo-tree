@@ -2,7 +2,6 @@
 
 pub(crate) mod cli;
 pub(crate) mod commands;
-pub(crate) mod display;
 
 use clap::Parser;
 use cli::{Cli, Command};
@@ -25,7 +24,6 @@ pub fn run() -> Result<()> {
         Command::List(args) => commands::list::run(args, &cli.global),
         Command::Tags(args) => commands::tags::run(args, &cli.global),
         Command::Init(args) => commands::init::run(args),
-        Command::Workflow(args) => commands::workflow::run(args),
         Command::Stats(args) => commands::stats::run(args, &cli.global),
     }
 }

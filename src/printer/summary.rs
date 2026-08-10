@@ -1,6 +1,7 @@
 use super::options::PrintOptions;
-use super::utils::{colorize_tag, format_duration};
+use super::utils::colorize_tag;
 use crate::core::ScanResult;
+use crate::display::format_duration;
 use colored::Colorize;
 use std::io::{self, Write};
 
@@ -60,7 +61,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: None,
-            priority: crate::core::Priority::from_tag(tag),
+            priority: crate::core::TodoPriority::from_tag(tag),
         }
     }
 

@@ -14,6 +14,9 @@ pub mod config;
 /// Domain types shared across the crate: TODO items, scan results and
 /// summaries, priorities, and the built-in tag catalog.
 pub mod core;
+/// Terminal display helpers (priority-to-color mapping) shared by the
+/// library's printers and the CLI binaries.
+pub mod display;
 /// Regex-based parsing of TODO-style comments out of file content.
 pub mod parser;
 /// Formatting a [`core::ScanResult`] as tree, flat, or JSON output.
@@ -21,4 +24,4 @@ pub mod printer;
 /// Directory walking and file parsing orchestration.
 pub mod scanner;
 
-pub use crate::core::{Priority, ScanResult, ScanSummary, TodoItem};
+pub use crate::core::{ScanResult, ScanSummary, TodoItem, TodoPriority};

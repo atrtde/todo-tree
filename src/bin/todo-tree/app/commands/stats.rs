@@ -1,10 +1,11 @@
-use super::load_config;
+use super::is_ci;
 use crate::app::cli;
-use crate::app::display::{format_duration, priority_to_color};
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
 use serde_json::json;
-use todo_tree::core::Priority;
+use todo_tree::config::{CliOptions, Config};
+use todo_tree::core::TodoPriority;
+use todo_tree::display::{format_duration, priority_to_color};
 use todo_tree::parser::TodoParser;
 use todo_tree::scanner::{ScanOptions, Scanner};
 
@@ -17,14 +18,42 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
         .canonicalize()
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
-    let config = load_config(&path, global.config.as_deref())?;
-    let tags = args.tags.clone().unwrap_or(config.tags.clone());
+    let mut config = Config::load_or_default(&path, global.config.as_deref())?;
+    config.merge_with_cli(CliOptions {
+        tags: args.tags.clone(),
+        include: args.include.clone(),
+        exclude: args.exclude.clone(),
+        json: args.json,
+        flat: false,
+        no_color: global.no_color,
+        ignore_case: args.ignore_case,
+        no_require_colon: args.no_require_colon,
+    });
 
-    let parser = TodoParser::new(&tags, false);
-    let scanner = Scanner::new(parser, ScanOptions::default());
+    let case_sensitive = !args.ignore_case && !config.ignore_case;
+    let require_colon = if args.no_require_colon {
+        false
+    } else {
+        config.require_colon
+    };
+
+    let parser = TodoParser::with_options(
+        &config.tags,
+        case_sensitive,
+        require_colon,
+        config.custom_pattern.as_deref(),
+    );
+
+    let scan_options = ScanOptions {
+        include: config.include.clone(),
+        exclude: config.exclude.clone(),
+        ..Default::default()
+    };
+
+    let scanner = Scanner::new(parser, scan_options);
     let result = scanner.scan(&path)?;
 
-    if args.json {
+    if args.json || is_ci() {
         let stats = json!({
             "total_items": result.summary.total_count,
             "files_with_todos": result.summary.files_with_todos,
@@ -74,7 +103,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
             if global.no_color {
                 println!("  {:<8} {:>4} ({:>5.1}%) {}", tag, count, percentage, bar);
             } else {
-                let color = priority_to_color(Priority::from_tag(tag));
+                let color = priority_to_color(TodoPriority::from_tag(tag));
                 println!(
                     "  {:<8} {:>4} ({:>5.1}%) {}",
                     tag.color(color),

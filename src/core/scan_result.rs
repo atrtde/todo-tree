@@ -1,7 +1,8 @@
 //! The result of scanning a directory tree.
 
 use super::file_result::FileResult;
-use super::summary::ScanSummary;
+use super::scan_summary::ScanSummary;
+use super::sort_order::SortOrder;
 use super::todo_item::TodoItem;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -140,6 +141,23 @@ impl ScanResult {
         }
     }
 
+    /// Sorts each file's items in place according to `order`.
+    pub fn sort_by(&mut self, order: SortOrder) {
+        match order {
+            SortOrder::File => {}
+            SortOrder::Line => {
+                for items in self.files_map.values_mut() {
+                    items.sort_by_key(|item| item.line);
+                }
+            }
+            SortOrder::Priority => {
+                for items in self.files_map.values_mut() {
+                    items.sort_by_key(|item| std::cmp::Reverse(item.priority));
+                }
+            }
+        }
+    }
+
     /// The scan's files, regardless of which internal form they're
     /// currently stored in.
     pub fn get_files(&self) -> Vec<FileResult> {
@@ -154,7 +172,7 @@ impl ScanResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::Priority;
+    use crate::core::TodoPriority;
 
     fn item(tag: &str, line: usize) -> TodoItem {
         TodoItem {
@@ -164,7 +182,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: None,
-            priority: Priority::from_tag(tag),
+            priority: TodoPriority::from_tag(tag),
         }
     }
 

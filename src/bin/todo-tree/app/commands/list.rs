@@ -1,8 +1,8 @@
-use super::load_config;
+use super::is_ci;
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
-use todo_tree::config::CliOptions;
+use todo_tree::config::{CliOptions, Config};
 use todo_tree::parser::TodoParser;
 use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
 use todo_tree::scanner::{ScanOptions, Scanner};
@@ -13,7 +13,7 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         .canonicalize()
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
-    let mut config = load_config(&path, global.config.as_deref())?;
+    let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
         tags: args.tags.clone(),
         include: args.include.clone(),
@@ -52,18 +52,20 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         result = result.filter_by_tag(filter_tag);
     }
 
+    let format = if args.json || is_ci() {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Flat
+    };
+
     let print_options = PrintOptions {
-        format: if args.json {
-            OutputFormat::Json
-        } else {
-            OutputFormat::Flat
-        },
+        format,
         colored: !global.no_color,
         show_line_numbers: true,
         full_paths: false,
         clickable_links: !global.no_color,
         base_path: Some(path),
-        show_summary: !args.json,
+        show_summary: format != OutputFormat::Json,
         group_by_tag: false,
     };
 

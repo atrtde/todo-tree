@@ -209,7 +209,7 @@ mod tests {
             column: 1,
             line_content: None,
             author: author.map(str::to_string),
-            priority: crate::core::Priority::from_tag(tag),
+            priority: crate::core::TodoPriority::from_tag(tag),
         }
     }
 

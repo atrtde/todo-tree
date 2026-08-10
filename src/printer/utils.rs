@@ -1,26 +1,10 @@
 //! Path formatting, terminal hyperlink, and tag-coloring helpers.
 
 use super::options::PrintOptions;
-use crate::core::Priority;
-use colored::{Color, Colorize};
+use crate::core::TodoPriority;
+use crate::display::priority_to_color;
+use colored::Colorize;
 use std::path::Path;
-
-pub(crate) fn format_duration(ms: u128) -> String {
-    if ms < 1000 {
-        format!("{}ms", ms)
-    } else {
-        format!("{:.2}s", ms as f64 / 1000.0)
-    }
-}
-
-pub(crate) fn priority_to_color(priority: Priority) -> Color {
-    match priority {
-        Priority::Critical => Color::Red,
-        Priority::High => Color::Yellow,
-        Priority::Medium => Color::Cyan,
-        Priority::Low => Color::Green,
-    }
-}
 
 /// Formats `path` per `options`: absolute if `options.full_paths`,
 /// relative to `options.base_path` if set, else as-is.
@@ -40,7 +24,7 @@ pub fn format_path(path: &Path, options: &PrintOptions) -> String {
 /// formatted path as link text. Returns `None` if `options.clickable_links`
 /// is off or the terminal doesn't advertise hyperlink support.
 pub fn make_clickable_link(path: &Path, line: usize, options: &PrintOptions) -> Option<String> {
-    if !options.clickable_links || !supports_hyperlinks() {
+    if !options.clickable_links || !hyperlinks_supported() {
         return None;
     }
 
@@ -65,7 +49,7 @@ pub fn make_clickable_link(path: &Path, line: usize, options: &PrintOptions) -> 
 /// `"L{line}"` as link text. Returns `None` under the same conditions as
 /// [`make_clickable_link`].
 pub fn make_line_link(path: &Path, line: usize, options: &PrintOptions) -> Option<String> {
-    if !options.clickable_links || !supports_hyperlinks() {
+    if !options.clickable_links || !hyperlinks_supported() {
         return None;
     }
 
@@ -86,103 +70,53 @@ pub fn make_line_link(path: &Path, line: usize, options: &PrintOptions) -> Optio
     Some(link)
 }
 
-/// Colors `tag` by its derived [`Priority`], or returns it unchanged if
+/// Colors `tag` by its derived [`TodoPriority`], or returns it unchanged if
 /// `options.colored` is off.
 pub fn colorize_tag(tag: &str, options: &PrintOptions) -> String {
     if !options.colored {
         return tag.to_string();
     }
 
-    let color = priority_to_color(Priority::from_tag(tag));
+    let color = priority_to_color(TodoPriority::from_tag(tag));
     tag.color(color).bold().to_string()
+}
+
+/// Whether `stdout` is a hyperlink-capable terminal: a TTY (or
+/// `FORCE_HYPERLINK` set) whose type is known to render OSC 8 links.
+fn hyperlinks_supported() -> bool {
+    supports_hyperlinks::on(supports_hyperlinks::Stream::Stdout)
 }
 
 #[cfg(test)]
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+/// Forces [`hyperlinks_supported`]'s result via `FORCE_HYPERLINK`
+/// (bypassing the TTY check, which is always false under `cargo test`'s
+/// captured stdout), restoring the prior value on drop.
 #[cfg(test)]
-struct EnvGuard {
-    term_program: Option<std::ffi::OsString>,
-    colorterm: Option<std::ffi::OsString>,
-    vte_version: Option<std::ffi::OsString>,
-    konsole_version: Option<std::ffi::OsString>,
-}
+struct ForceHyperlinkGuard(Option<std::ffi::OsString>);
 
 #[cfg(test)]
-impl EnvGuard {
-    fn clear_all() -> Self {
-        let saved = Self {
-            term_program: std::env::var_os("TERM_PROGRAM"),
-            colorterm: std::env::var_os("COLORTERM"),
-            vte_version: std::env::var_os("VTE_VERSION"),
-            konsole_version: std::env::var_os("KONSOLE_VERSION"),
-        };
+impl ForceHyperlinkGuard {
+    fn set(value: &str) -> Self {
+        let saved = std::env::var_os("FORCE_HYPERLINK");
         unsafe {
-            std::env::remove_var("TERM_PROGRAM");
-            std::env::remove_var("COLORTERM");
-            std::env::remove_var("VTE_VERSION");
-            std::env::remove_var("KONSOLE_VERSION");
+            std::env::set_var("FORCE_HYPERLINK", value);
         }
-        saved
+        Self(saved)
     }
 }
 
 #[cfg(test)]
-impl Drop for EnvGuard {
+impl Drop for ForceHyperlinkGuard {
     fn drop(&mut self) {
         unsafe {
-            match &self.term_program {
-                Some(v) => std::env::set_var("TERM_PROGRAM", v),
-                None => std::env::remove_var("TERM_PROGRAM"),
-            }
-            match &self.colorterm {
-                Some(v) => std::env::set_var("COLORTERM", v),
-                None => std::env::remove_var("COLORTERM"),
-            }
-            match &self.vte_version {
-                Some(v) => std::env::set_var("VTE_VERSION", v),
-                None => std::env::remove_var("VTE_VERSION"),
-            }
-            match &self.konsole_version {
-                Some(v) => std::env::set_var("KONSOLE_VERSION", v),
-                None => std::env::remove_var("KONSOLE_VERSION"),
+            match &self.0 {
+                Some(v) => std::env::set_var("FORCE_HYPERLINK", v),
+                None => std::env::remove_var("FORCE_HYPERLINK"),
             }
         }
     }
-}
-
-fn supports_hyperlinks() -> bool {
-    if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
-        let supported_terminals = [
-            "iTerm.app",
-            "WezTerm",
-            "Hyper",
-            "Tabby",
-            "Alacritty",
-            "vscode",
-            "VSCodium",
-            "Ghostty",
-        ];
-        if supported_terminals.iter().any(|t| term_program.contains(t)) {
-            return true;
-        }
-    }
-
-    if let Ok(colorterm) = std::env::var("COLORTERM")
-        && (colorterm == "truecolor" || colorterm == "24bit")
-    {
-        return true;
-    }
-
-    if std::env::var("VTE_VERSION").is_ok() {
-        return true;
-    }
-
-    if std::env::var("KONSOLE_VERSION").is_ok() {
-        return true;
-    }
-
-    false
 }
 
 #[cfg(test)]
@@ -192,24 +126,6 @@ mod tests {
 
     fn options() -> PrintOptions {
         PrintOptions::default()
-    }
-
-    #[test]
-    fn format_duration_under_a_second_uses_ms() {
-        assert_eq!(format_duration(250), "250ms");
-    }
-
-    #[test]
-    fn format_duration_over_a_second_uses_seconds() {
-        assert_eq!(format_duration(1500), "1.50s");
-    }
-
-    #[test]
-    fn priority_to_color_maps_every_priority() {
-        assert_eq!(priority_to_color(Priority::Critical), Color::Red);
-        assert_eq!(priority_to_color(Priority::High), Color::Yellow);
-        assert_eq!(priority_to_color(Priority::Medium), Color::Cyan);
-        assert_eq!(priority_to_color(Priority::Low), Color::Green);
     }
 
     #[test]
@@ -285,61 +201,25 @@ mod tests {
     }
 
     #[test]
-    fn supports_hyperlinks_false_with_no_indicators() {
+    fn hyperlinks_supported_false_when_forced_off() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
+        let _guard = ForceHyperlinkGuard::set("0");
 
-        assert!(!supports_hyperlinks());
+        assert!(!hyperlinks_supported());
     }
 
     #[test]
-    fn supports_hyperlinks_true_for_known_term_program() {
+    fn hyperlinks_supported_true_when_forced_on() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
-        assert!(supports_hyperlinks());
-    }
-
-    #[test]
-    fn supports_hyperlinks_true_for_truecolor() {
-        let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("COLORTERM", "truecolor");
-        }
-
-        assert!(supports_hyperlinks());
-    }
-
-    #[test]
-    fn supports_hyperlinks_true_for_vte_version() {
-        let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("VTE_VERSION", "6003");
-        }
-
-        assert!(supports_hyperlinks());
-    }
-
-    #[test]
-    fn supports_hyperlinks_true_for_konsole_version() {
-        let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("KONSOLE_VERSION", "1");
-        }
-
-        assert!(supports_hyperlinks());
+        assert!(hyperlinks_supported());
     }
 
     #[test]
     fn make_clickable_link_none_when_terminal_unsupported() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
+        let _guard = ForceHyperlinkGuard::set("0");
 
         let opts = options();
         assert!(make_clickable_link(Path::new("src/main.rs"), 1, &opts).is_none());
@@ -348,10 +228,7 @@ mod tests {
     #[test]
     fn make_clickable_link_none_when_path_does_not_exist() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
         let opts = options();
         let missing = Path::new("/definitely/not/a/real/path/hopefully.rs");
@@ -361,10 +238,7 @@ mod tests {
     #[test]
     fn make_clickable_link_some_for_existing_path_on_supported_terminal() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
         let opts = PrintOptions {
             colored: true,
@@ -378,10 +252,7 @@ mod tests {
     #[test]
     fn make_clickable_link_uncolored_variant() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
         let opts = PrintOptions {
             colored: false,
@@ -394,10 +265,7 @@ mod tests {
     #[test]
     fn make_line_link_some_for_existing_path_on_supported_terminal() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
         let opts = PrintOptions {
             colored: true,
@@ -411,10 +279,7 @@ mod tests {
     #[test]
     fn make_line_link_uncolored_variant() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
         let opts = PrintOptions {
             colored: false,
@@ -427,10 +292,7 @@ mod tests {
     #[test]
     fn make_line_link_none_when_path_does_not_exist() {
         let _lock = ENV_LOCK.lock().unwrap();
-        let _guard = EnvGuard::clear_all();
-        unsafe {
-            std::env::set_var("TERM_PROGRAM", "iTerm.app");
-        }
+        let _guard = ForceHyperlinkGuard::set("1");
 
         let opts = options();
         let missing = Path::new("/definitely/not/a/real/path/hopefully.rs");
