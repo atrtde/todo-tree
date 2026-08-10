@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `documentation = "https://docs.rs/todo-tree"` in `Cargo.toml`; the crate now builds clean under `#![warn(missing_docs)]` with full public API documentation.
 - `tt watch` (alias `tt w`) subcommand: re-scans and reprints on file changes, using `notify` + `notify-debouncer-mini` to coalesce bursts (`--debounce-ms` to tune, default 250ms). File-system events are filtered through the same `.gitignore`/`--include`/`--exclude` rules as a normal scan before triggering a re-scan, so changes under ignored directories (`target/`, `node_modules/`, ...) are skipped.
+- `::` back in `DEFAULT_REGEX` as comment marker (removed in 0.3.0 over false positives), now line-start/whitespace-gated so `std::io::Error` still won't match.
 
 ### CI
 - Rewrote `ci.yml` and added a dedicated `build-binaries.yml`, matching the workflow structure used in `dotfiles-manager`/`feedyourai`.
