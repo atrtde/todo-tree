@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Scanner::scan` now walks in parallel (`ignore::WalkBuilder::build_parallel`) across `ScanOptions::threads` workers instead of walking single-threaded; the `threads` option now does what it always claimed to.
 - `Scanner` caches its `ignore::Overrides` after the first `scan()` call instead of rebuilding them on every call, since `tt watch` reuses one `Scanner` across many re-scans.
 - `TodoParser::parse_file` does a cheap `memchr`-based byte scan for configured tags before validating UTF-8 and running the regex pass, skipping that cost entirely for files that can't match (lockfiles, bundled JS, binaries).
+- Clickable OSC 8 hyperlink detection now delegates to the `supports-hyperlinks` crate instead of a hand-rolled `TERM_PROGRAM`/`COLORTERM`/`VTE_VERSION`/`KONSOLE_VERSION` allowlist, picking up terminals (Windows Terminal, kitty, ...) and SSH/TTY handling the old allowlist didn't cover.
+
+### Fixed
+- Clickable hyperlinks were previously emitted based on terminal-identifying env vars alone, with no check that stdout was actually a terminal; redirecting or piping `todo-tree`/`tt` output (e.g. `tt scan > out.txt`, `tt scan | grep TODO`) could embed raw OSC 8 escape codes in the non-interactive output. Detection now also requires stdout to be a TTY (or `FORCE_HYPERLINK` to be set).
 
 ### Added
 - `scan`/`tt` (default), `list`, `watch`, and `stats` now default to JSON output when a `CI` environment variable is set (the convention used by GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers), instead of the human-oriented tree/flat/text output used locally. An explicit `--json` or `--flat` flag always takes precedence over this auto-detection.
