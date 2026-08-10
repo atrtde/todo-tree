@@ -1,8 +1,9 @@
-use super::{is_ci, load_config};
+use super::is_ci;
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
 use serde_json::json;
+use todo_tree::config::Config;
 use todo_tree::core::TodoPriority;
 use todo_tree::display::{format_duration, priority_to_color};
 use todo_tree::parser::TodoParser;
@@ -17,7 +18,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
         .canonicalize()
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
-    let config = load_config(&path, global.config.as_deref())?;
+    let config = Config::load_or_default(&path, global.config.as_deref())?;
     let tags = args.tags.clone().unwrap_or(config.tags.clone());
 
     let parser = TodoParser::new(&tags, false);

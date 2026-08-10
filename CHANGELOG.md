@@ -16,11 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Global config directory resolution**: now honors `$XDG_CONFIG_HOME` on every platform (previously only the OS-default config directory was checked, and XDG wasn't consulted on macOS/Windows at all).
 - **`dirs` replaces `directories-next`** for platform/XDG directory resolution.
 - **`Priority` renamed to `TodoPriority`**: was `todo_tree::core::Priority` (`src/core/priority.rs`), now `todo_tree::core::TodoPriority` (`src/core/todo_priority.rs`).
+- **`tt workflow` command removed**: `tt workflow init` and everything backing it (GitHub Actions workflow-template generation) is gone. Use the [`todo-tree-action`](https://github.com/alexandretrotel/todo-tree-action) GitHub Action directly in a hand-written workflow file instead.
 
 ### Changed
 - Reorganized `src/` so the `todo_tree` library and the `todo-tree`/`tt` binaries live in clearly separated trees (`src/` for the library, `src/bin/todo-tree/` and `src/bin/tt/` for the binaries). `tt` shares `todo-tree`'s CLI implementation via `#[path]`, with no runtime indirection.
 - Bumped all dependencies to their latest stable versions, pinned at `major.minor` only.
-- `tt workflow init` now defaults to `alexandretrotel/todo-tree-action@main` instead of a pinned release tag; pass `--action owner/repo@ref` to pin a specific version.
 - `Scanner::scan` now walks in parallel (`ignore::WalkBuilder::build_parallel`) across `ScanOptions::threads` workers instead of walking single-threaded; the `threads` option now does what it always claimed to.
 - `Scanner` caches its `ignore::Overrides` after the first `scan()` call instead of rebuilding them on every call, since `tt watch` reuses one `Scanner` across many re-scans.
 - `TodoParser::parse_file` does a cheap `memchr`-based byte scan for configured tags before validating UTF-8 and running the regex pass, skipping that cost entirely for files that can't match (lockfiles, bundled JS, binaries).
@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `documentation = "https://docs.rs/todo-tree"` in `Cargo.toml`; the crate now builds clean under `#![warn(missing_docs)]` with full public API documentation.
 - `tt watch` (alias `tt w`) subcommand: re-scans and reprints on file changes, using `notify` + `notify-debouncer-mini` to coalesce bursts (`--debounce-ms` to tune, default 250ms). File-system events are filtered through the same `.gitignore`/`--include`/`--exclude` rules as a normal scan before triggering a re-scan, so changes under ignored directories (`target/`, `node_modules/`, ...) are skipped.
 - `::` back in `DEFAULT_REGEX` as comment marker (removed in 0.3.0 over false positives), now line-start/whitespace-gated so `std::io::Error` still won't match.
+- `todo_tree::core::SortOrder` and `ScanResult::sort_by`: result sorting (by file, line, or priority) is now part of the library's public API, not a CLI-only helper.
+- `Config::load_or_default` and `Config::save_in_cwd`: the config discovery-with-fallback and save-to-current-directory helpers used by the CLI are now public `Config` methods, usable by library consumers directly.
 
 ### CI
 - Rewrote `ci.yml` and added a dedicated `build-binaries.yml`, matching the workflow structure used in `dotfiles-manager`/`feedyourai`.

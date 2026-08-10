@@ -1,8 +1,8 @@
-use super::{is_ci, load_config, sort_results};
+use super::is_ci;
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
-use todo_tree::config::CliOptions;
+use todo_tree::config::{CliOptions, Config};
 use todo_tree::parser::TodoParser;
 use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
 use todo_tree::scanner::{ScanOptions, Scanner};
@@ -13,7 +13,7 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
         .canonicalize()
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
-    let mut config = load_config(&path, global.config.as_deref())?;
+    let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
         tags: args.tags.clone(),
         include: args.include.clone(),
@@ -52,7 +52,7 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scanner = Scanner::new(parser, scan_options);
     let mut result = scanner.scan(&path)?;
 
-    sort_results(&mut result, args.sort);
+    result.sort_by(args.sort.into());
 
     let format = if args.json {
         OutputFormat::Json

@@ -1,4 +1,4 @@
-use super::{is_ci, load_config, sort_results};
+use super::is_ci;
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use ignore::Match;
@@ -9,7 +9,7 @@ use notify_debouncer_mini::{DebounceEventResult, new_debouncer};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
-use todo_tree::config::CliOptions;
+use todo_tree::config::{CliOptions, Config};
 use todo_tree::parser::TodoParser;
 use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
 use todo_tree::scanner::{ScanOptions, Scanner};
@@ -21,7 +21,7 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
         .canonicalize()
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
-    let mut config = load_config(&path, global.config.as_deref())?;
+    let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
         tags: scan_args.tags.clone(),
         include: scan_args.include.clone(),
@@ -118,7 +118,7 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
 
 fn rescan(scanner: &Scanner, path: &Path, sort: cli::SortOrder, printer: &Printer) -> Result<()> {
     let mut result = scanner.scan(path)?;
-    sort_results(&mut result, sort);
+    result.sort_by(sort.into());
     printer.print(&result)?;
     Ok(())
 }

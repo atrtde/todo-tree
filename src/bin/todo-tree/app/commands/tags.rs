@@ -1,18 +1,18 @@
-use super::load_config;
 use crate::app::cli;
 use color_eyre::eyre::Result;
+use todo_tree::config::Config;
 use todo_tree::core::TodoPriority;
 use todo_tree::core::tags::default_tag_names;
 use todo_tree::display::priority_to_color;
 
 pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let current_dir = std::env::current_dir()?;
-    let mut config = load_config(&current_dir, global.config.as_deref())?;
+    let mut config = Config::load_or_default(&current_dir, global.config.as_deref())?;
 
     if let Some(new_tag) = &args.add {
         if !config.tags.iter().any(|t| t.eq_ignore_ascii_case(new_tag)) {
             config.tags.push(new_tag.to_uppercase());
-            super::save_config(&config)?;
+            config.save_in_cwd()?;
             println!("Added tag: {}", new_tag.to_uppercase());
         } else {
             println!("Tag already exists: {}", new_tag);
@@ -24,7 +24,7 @@ pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
         let original_len = config.tags.len();
         config.tags.retain(|t| !t.eq_ignore_ascii_case(remove_tag));
         if config.tags.len() < original_len {
-            super::save_config(&config)?;
+            config.save_in_cwd()?;
             println!("Removed tag: {}", remove_tag);
         } else {
             println!("Tag not found: {}", remove_tag);
@@ -34,7 +34,7 @@ pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
 
     if args.reset {
         config.tags = default_tag_names();
-        super::save_config(&config)?;
+        config.save_in_cwd()?;
         println!("Tags reset to defaults");
         return Ok(());
     }

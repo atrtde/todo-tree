@@ -1,8 +1,8 @@
-use super::{is_ci, load_config};
+use super::is_ci;
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
-use todo_tree::config::CliOptions;
+use todo_tree::config::{CliOptions, Config};
 use todo_tree::parser::TodoParser;
 use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
 use todo_tree::scanner::{ScanOptions, Scanner};
@@ -13,7 +13,7 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         .canonicalize()
         .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
 
-    let mut config = load_config(&path, global.config.as_deref())?;
+    let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
         tags: args.tags.clone(),
         include: args.include.clone(),

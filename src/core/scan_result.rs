@@ -2,6 +2,7 @@
 
 use super::file_result::FileResult;
 use super::scan_summary::ScanSummary;
+use super::sort_order::SortOrder;
 use super::todo_item::TodoItem;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -137,6 +138,23 @@ impl ScanResult {
             files_map: HashMap::new(),
             summary: self.summary.clone(),
             root: None,
+        }
+    }
+
+    /// Sorts each file's items in place according to `order`.
+    pub fn sort_by(&mut self, order: SortOrder) {
+        match order {
+            SortOrder::File => {}
+            SortOrder::Line => {
+                for items in self.files_map.values_mut() {
+                    items.sort_by_key(|item| item.line);
+                }
+            }
+            SortOrder::Priority => {
+                for items in self.files_map.values_mut() {
+                    items.sort_by_key(|item| std::cmp::Reverse(item.priority));
+                }
+            }
         }
     }
 
