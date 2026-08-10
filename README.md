@@ -135,6 +135,12 @@ tt watch --tags TODO,FIXME --exclude "*.log"
 
 File-system events are filtered through the same `.gitignore` and `--include`/`--exclude` rules as a normal scan before a re-scan is triggered, so noise from ignored directories (`target/`, `node_modules/`, ...) doesn't cause unnecessary re-scans.
 
+### Output Formats
+
+`tt scan`/`tt` (default), `tt list`, `tt watch`, and `tt stats` render human-oriented output locally: a colored tree (or flat list for `tt list`), plus a summary block. Pass `--json` to switch any of them to machine-readable JSON, or `--flat` (`tt scan`/`tt watch` only) for a flat, ungrouped list.
+
+**CI auto-detection:** when a `CI` environment variable is set — as GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers do by default — these commands default to JSON output instead of the local tree/flat/text output, so CI logs and downstream tooling get structured data without needing `--json` on every invocation. An explicit `--json` or `--flat` flag always overrides this auto-detection.
+
 ## Configuration
 
 Create a `.todorc.json` or `.todorc.toml` file in your project root:

@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TodoParser::parse_file` does a cheap `memchr`-based byte scan for configured tags before validating UTF-8 and running the regex pass, skipping that cost entirely for files that can't match (lockfiles, bundled JS, binaries).
 
 ### Added
+- `scan`/`tt` (default), `list`, `watch`, and `stats` now default to JSON output when a `CI` environment variable is set (the convention used by GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers), instead of the human-oriented tree/flat/text output used locally. An explicit `--json` or `--flat` flag always takes precedence over this auto-detection.
 - `documentation = "https://docs.rs/todo-tree"` in `Cargo.toml`; the crate now builds clean under `#![warn(missing_docs)]` with full public API documentation.
 - `tt watch` (alias `tt w`) subcommand: re-scans and reprints on file changes, using `notify` + `notify-debouncer-mini` to coalesce bursts (`--debounce-ms` to tune, default 250ms). File-system events are filtered through the same `.gitignore`/`--include`/`--exclude` rules as a normal scan before triggering a re-scan, so changes under ignored directories (`target/`, `node_modules/`, ...) are skipped.
 - `::` back in `DEFAULT_REGEX` as comment marker (removed in 0.3.0 over false positives), now line-start/whitespace-gated so `std::io::Error` still won't match.
