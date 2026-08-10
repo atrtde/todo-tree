@@ -1,10 +1,10 @@
 use super::{is_ci, load_config};
 use crate::app::cli;
-use crate::app::display::{format_duration, priority_to_color};
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
 use serde_json::json;
 use todo_tree::core::TodoPriority;
+use todo_tree::display::{format_duration, priority_to_color};
 use todo_tree::parser::TodoParser;
 use todo_tree::scanner::{ScanOptions, Scanner};
 

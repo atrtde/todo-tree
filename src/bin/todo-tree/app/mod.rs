@@ -2,7 +2,6 @@
 
 pub(crate) mod cli;
 pub(crate) mod commands;
-pub(crate) mod display;
 
 use clap::Parser;
 use cli::{Cli, Command};
