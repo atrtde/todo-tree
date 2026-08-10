@@ -97,6 +97,40 @@ pub fn colorize_tag(tag: &str, options: &PrintOptions) -> String {
     tag.color(color).bold().to_string()
 }
 
+fn supports_hyperlinks() -> bool {
+    if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
+        let supported_terminals = [
+            "iTerm.app",
+            "WezTerm",
+            "Hyper",
+            "Tabby",
+            "Alacritty",
+            "vscode",
+            "VSCodium",
+            "Ghostty",
+        ];
+        if supported_terminals.iter().any(|t| term_program.contains(t)) {
+            return true;
+        }
+    }
+
+    if let Ok(colorterm) = std::env::var("COLORTERM")
+        && (colorterm == "truecolor" || colorterm == "24bit")
+    {
+        return true;
+    }
+
+    if std::env::var("VTE_VERSION").is_ok() {
+        return true;
+    }
+
+    if std::env::var("KONSOLE_VERSION").is_ok() {
+        return true;
+    }
+
+    false
+}
+
 #[cfg(test)]
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -149,40 +183,6 @@ impl Drop for EnvGuard {
             }
         }
     }
-}
-
-fn supports_hyperlinks() -> bool {
-    if let Ok(term_program) = std::env::var("TERM_PROGRAM") {
-        let supported_terminals = [
-            "iTerm.app",
-            "WezTerm",
-            "Hyper",
-            "Tabby",
-            "Alacritty",
-            "vscode",
-            "VSCodium",
-            "Ghostty",
-        ];
-        if supported_terminals.iter().any(|t| term_program.contains(t)) {
-            return true;
-        }
-    }
-
-    if let Ok(colorterm) = std::env::var("COLORTERM")
-        && (colorterm == "truecolor" || colorterm == "24bit")
-    {
-        return true;
-    }
-
-    if std::env::var("VTE_VERSION").is_ok() {
-        return true;
-    }
-
-    if std::env::var("KONSOLE_VERSION").is_ok() {
-        return true;
-    }
-
-    false
 }
 
 #[cfg(test)]
