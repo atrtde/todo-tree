@@ -1,3 +1,6 @@
+//! `tt watch`: scans once, then re-scans and reprints on relevant file
+//! changes until interrupted.
+
 use super::is_ci;
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
@@ -14,6 +17,9 @@ use todo_tree::parser::TodoParser;
 use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
 use todo_tree::scanner::{ScanOptions, Scanner};
 
+/// Runs `tt watch`: resolves config and scan options, performs an initial
+/// scan, then blocks watching `path` for file-system changes, re-scanning
+/// and reprinting whenever a change survives [`EventFilter`].
 pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scan_args = args.scan;
     let path = scan_args.path.clone().unwrap_or_else(|| PathBuf::from("."));
@@ -116,6 +122,9 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     Ok(())
 }
 
+/// Scans `path` with `scanner`, sorts the result by `sort`, and prints it
+/// with `printer`. Called once up front and again after every relevant
+/// file-change event.
 fn rescan(scanner: &Scanner, path: &Path, sort: cli::SortOrder, printer: &Printer) -> Result<()> {
     let mut result = scanner.scan(path)?;
     result.sort_by(sort.into());
@@ -128,13 +137,23 @@ fn rescan(scanner: &Scanner, path: &Path, sort: cli::SortOrder, printer: &Printe
 /// triggered for paths that could actually change scan output (`notify`
 /// itself has no concept of `.gitignore`).
 struct EventFilter {
+    /// The directory being watched; paths outside it are treated as
+    /// relevant unconditionally (see [`EventFilter::is_relevant`]).
     root: PathBuf,
+    /// `.gitignore` rules rooted at `root`, or an empty matcher if
+    /// `ScanOptions::respect_gitignore` was `false`.
     gitignore: Gitignore,
+    /// `--include`/`--exclude` matcher, or `None` if neither was set.
     overrides: Option<Override>,
+    /// Mirrors `ScanOptions::hidden`: whether dotfiles/dot-directories
+    /// should be treated as relevant despite being hidden.
     hidden: bool,
 }
 
 impl EventFilter {
+    /// Builds a filter from the same `.gitignore`/include/exclude/hidden
+    /// rules as `options`, so filesystem events are judged relevant by the
+    /// same criteria a scan would use to include or skip a path.
     fn build(root: &Path, options: &ScanOptions) -> Result<Self> {
         let gitignore = if options.respect_gitignore {
             let mut builder = GitignoreBuilder::new(root);
@@ -172,6 +191,8 @@ impl EventFilter {
         })
     }
 
+    /// Whether a change at `path` could affect scan output, and so should
+    /// trigger a re-scan.
     fn is_relevant(&self, path: &Path) -> bool {
         // `matched_path_or_any_parents` panics on a path outside the
         // matcher's root; fail open (treat as relevant) rather than crash
@@ -208,6 +229,7 @@ impl EventFilter {
     }
 }
 
+/// Whether any path component between `root` and `path` starts with `.`.
 fn is_hidden(root: &Path, path: &Path) -> bool {
     path.strip_prefix(root)
         .unwrap_or(path)
