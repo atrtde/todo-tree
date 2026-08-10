@@ -1,7 +1,7 @@
 //! The result of scanning a directory tree.
 
 use super::file_result::FileResult;
-use super::summary::ScanSummary;
+use super::scan_summary::ScanSummary;
 use super::todo_item::TodoItem;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
