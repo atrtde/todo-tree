@@ -61,14 +61,16 @@ jobs:
           FORMULA_PATH="homebrew-tap/Formula/todo-tree.rb"
 
           cat > "$FORMULA_PATH" << 'EOF'
-          # typed: false
-          # frozen_string_literal: true
-
           class TodoTree < Formula
-            desc "A CLI tool to find and display TODO-style comments in your codebase"
+            desc "A command-line tool to find and display TODO-style comments in your codebase"
             homepage "https://github.com/alexandretrotel/todo-tree"
             version "VERSION_PLACEHOLDER"
             license "GPL-3.0-or-later"
+
+            livecheck do
+              url :stable
+              strategy :github_latest
+            end
 
             on_macos do
               on_arm do
