@@ -10,7 +10,7 @@ use std::path::PathBuf;
     about = "A CLI tool to find and display TODO-style comments in your codebase",
     long_about = "A CLI tool to find and display TODO-style comments in your codebase\n\
 \n\
-Examples:\n\
+\x1b[1m\x1b[4mExamples:\x1b[0m\n\
   tt                              Scan the current directory\n\
   tt scan ./src --tags TODO,FIXME Scan for specific tags only\n\
   tt watch --json > todos.jsonl   Re-scan on save, streaming JSON\n\
