@@ -9,6 +9,11 @@ pub fn run(args: cli::CompletionsArgs) -> Result<()> {
     // `CARGO_BIN_NAME` resolves per binary target at compile time (unlike
     // `Cli`'s fixed `#[command(name = "todo-tree")]`), so `tt`'s completions
     // are generated under the `tt` name and `todo-tree`'s under its own.
-    clap_complete::generate(args.shell, &mut cmd, env!("CARGO_BIN_NAME"), &mut std::io::stdout());
+    clap_complete::generate(
+        args.shell,
+        &mut cmd,
+        env!("CARGO_BIN_NAME"),
+        &mut std::io::stdout(),
+    );
     Ok(())
 }

@@ -14,14 +14,12 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
         .path
         .clone()
         .unwrap_or_else(|| std::path::PathBuf::from("."));
-    let path = path
-        .canonicalize()
-        .wrap_err_with(|| {
-            format!(
-                "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
-                path.display()
-            )
-        })?;
+    let path = path.canonicalize().wrap_err_with(|| {
+        format!(
+            "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+            path.display()
+        )
+    })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {

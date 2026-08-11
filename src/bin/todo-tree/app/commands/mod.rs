@@ -38,7 +38,11 @@ pub(crate) fn show_progress() -> bool {
 /// A silent multi-second scan on a large tree is otherwise indistinguishable
 /// from a hang, which the guide calls out directly: print within 100ms or
 /// show progress for anything that can take over a second.
-pub(crate) fn scan_with_progress(scanner: &Scanner, path: &Path, enabled: bool) -> Result<ScanResult> {
+pub(crate) fn scan_with_progress(
+    scanner: &Scanner,
+    path: &Path,
+    enabled: bool,
+) -> Result<ScanResult> {
     if !enabled {
         return scanner.scan(path);
     }

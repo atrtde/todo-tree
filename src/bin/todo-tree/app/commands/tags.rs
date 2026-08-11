@@ -27,8 +27,7 @@ pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
             config.save_in_cwd()?;
             println!("Removed tag: {}", remove_tag);
         } else {
-            let suggestion =
-                closest_match(remove_tag, config.tags.iter().map(String::as_str));
+            let suggestion = closest_match(remove_tag, config.tags.iter().map(String::as_str));
             match suggestion {
                 Some(suggestion) => {
                     println!("Tag not found: {remove_tag} (did you mean {suggestion}?)")

@@ -10,14 +10,12 @@ use todo_tree::scanner::{ScanOptions, Scanner};
 
 pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
-    let path = path
-        .canonicalize()
-        .wrap_err_with(|| {
-            format!(
-                "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
-                path.display()
-            )
-        })?;
+    let path = path.canonicalize().wrap_err_with(|| {
+        format!(
+            "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+            path.display()
+        )
+    })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
@@ -58,8 +56,12 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         result = result.filter_by_tag(filter_tag);
 
         if result.summary.total_count == 0
-            && !config.tags.iter().any(|t| t.eq_ignore_ascii_case(filter_tag))
-            && let Some(suggestion) = closest_match(filter_tag, config.tags.iter().map(String::as_str))
+            && !config
+                .tags
+                .iter()
+                .any(|t| t.eq_ignore_ascii_case(filter_tag))
+            && let Some(suggestion) =
+                closest_match(filter_tag, config.tags.iter().map(String::as_str))
         {
             eprintln!("No matches for tag '{filter_tag}' (did you mean '{suggestion}'?)");
         }

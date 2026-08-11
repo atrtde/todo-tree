@@ -191,10 +191,7 @@ pub struct ListArgs {
     pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
-    #[arg(
-        long,
-        help = "Plain output: no color, no symbols, no hyperlinks"
-    )]
+    #[arg(long, help = "Plain output: no color, no symbols, no hyperlinks")]
     pub plain: bool,
     #[arg(long, help = "Filter results by a specific tag")]
     pub filter: Option<String>,
@@ -255,10 +252,7 @@ pub struct StatsArgs {
     pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
-    #[arg(
-        long,
-        help = "Plain output: no color, no symbols, no hyperlinks"
-    )]
+    #[arg(long, help = "Plain output: no color, no symbols, no hyperlinks")]
     pub plain: bool,
     #[arg(long, help = "Ignore case when matching tags")]
     pub ignore_case: bool,

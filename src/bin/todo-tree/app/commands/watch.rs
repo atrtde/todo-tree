@@ -24,14 +24,12 @@ use todo_tree::scanner::{ScanOptions, Scanner};
 pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scan_args = args.scan;
     let path = scan_args.path.clone().unwrap_or_else(|| PathBuf::from("."));
-    let path = path
-        .canonicalize()
-        .wrap_err_with(|| {
-            format!(
-                "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
-                path.display()
-            )
-        })?;
+    let path = path.canonicalize().wrap_err_with(|| {
+        format!(
+            "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+            path.display()
+        )
+    })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
