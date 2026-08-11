@@ -3,6 +3,7 @@ use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
 use todo_tree::config::{CliOptions, Config};
+use todo_tree::display::closest_match;
 use todo_tree::parser::TodoParser;
 use todo_tree::printer::{OutputFormat, PrintOptions, Printer};
 use todo_tree::scanner::{ScanOptions, Scanner};
@@ -55,6 +56,13 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
 
     if let Some(filter_tag) = &args.filter {
         result = result.filter_by_tag(filter_tag);
+
+        if result.summary.total_count == 0
+            && !config.tags.iter().any(|t| t.eq_ignore_ascii_case(filter_tag))
+            && let Some(suggestion) = closest_match(filter_tag, config.tags.iter().map(String::as_str))
+        {
+            eprintln!("No matches for tag '{filter_tag}' (did you mean '{suggestion}'?)");
+        }
     }
 
     let format = if args.json || is_ci() {
