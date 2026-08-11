@@ -1,7 +1,7 @@
 //! `tt watch`: scans once, then re-scans and reprints on relevant file
 //! changes until interrupted.
 
-use super::is_ci;
+use super::{is_ci, scan_with_progress, show_progress};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use ignore::Match;
@@ -98,7 +98,7 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     };
     let printer = Printer::new(print_options);
 
-    rescan(&scanner, &path, scan_args.sort, &printer)?;
+    rescan(&scanner, &path, scan_args.sort, &printer, show_progress())?;
 
     let (tx, rx) = mpsc::channel::<DebounceEventResult>();
     let mut debouncer = new_debouncer(Duration::from_millis(args.debounce_ms), tx)
@@ -123,7 +123,7 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
         match result {
             Ok(events) => {
                 if events.iter().any(|event| filter.is_relevant(&event.path)) {
-                    rescan(&scanner, &path, scan_args.sort, &printer)?;
+                    rescan(&scanner, &path, scan_args.sort, &printer, false)?;
                 }
             }
             Err(err) => {
@@ -148,10 +148,19 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
 }
 
 /// Scans `path` with `scanner`, sorts the result by `sort`, and prints it
-/// with `printer`. Called once up front and again after every relevant
-/// file-change event.
-fn rescan(scanner: &Scanner, path: &Path, sort: cli::SortOrder, printer: &Printer) -> Result<()> {
-    let mut result = scanner.scan(path)?;
+/// with `printer`. Called once up front (with `progress` typically enabled,
+/// since the first scan of a large tree has nothing else to show for it
+/// yet) and again after every relevant file-change event (with `progress`
+/// off, since those re-scans reuse cached overrides and are expected to be
+/// fast).
+fn rescan(
+    scanner: &Scanner,
+    path: &Path,
+    sort: cli::SortOrder,
+    printer: &Printer,
+    progress: bool,
+) -> Result<()> {
+    let mut result = scan_with_progress(scanner, path, progress)?;
     result.sort_by(sort.into());
     printer.print(&result)?;
     Ok(())

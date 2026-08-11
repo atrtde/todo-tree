@@ -1,4 +1,4 @@
-use super::is_ci;
+use super::{is_ci, scan_with_progress, show_progress};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
@@ -55,7 +55,7 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
     };
 
     let scanner = Scanner::new(parser, scan_options);
-    let mut result = scanner.scan(&path)?;
+    let mut result = scan_with_progress(&scanner, &path, show_progress())?;
 
     result.sort_by(args.sort.into());
 

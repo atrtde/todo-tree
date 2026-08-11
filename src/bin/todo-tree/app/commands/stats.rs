@@ -1,4 +1,4 @@
-use super::is_ci;
+use super::{is_ci, scan_with_progress, show_progress};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
@@ -56,7 +56,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
     };
 
     let scanner = Scanner::new(parser, scan_options);
-    let result = scanner.scan(&path)?;
+    let result = scan_with_progress(&scanner, &path, show_progress())?;
 
     let plain = global.no_color || args.plain;
     if args.plain {
