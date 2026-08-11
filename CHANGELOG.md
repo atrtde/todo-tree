@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## todo-tree-1.1.1
+
+### Changed
+
+- Usage examples in `--help` moved from `before_help` (printed on every `-h`/`--help` invocation) into `long_about` (printed only for the full `--help` output), keeping `-h`'s summary short while `--help` stays example-rich.
+- The "Examples:" heading in `--help` is now styled bold+underline like clap's built-in `Usage:`/`Commands:` headers, instead of plain text.
+
 ## todo-tree-1.1.0
 
 CLI improvements tracked against the [Command Line Interface Guidelines](https://clig.dev/).
