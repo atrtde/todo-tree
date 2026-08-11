@@ -1,6 +1,7 @@
 pub mod completions;
 pub mod init;
 pub mod list;
+pub mod man;
 pub mod scan;
 pub mod stats;
 pub mod tags;

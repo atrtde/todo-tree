@@ -51,6 +51,8 @@ pub enum Command {
     Stats(StatsArgs),
     #[command(about = "Generate a shell completion script")]
     Completions(CompletionsArgs),
+    #[command(about = "Generate a man page")]
+    Man,
 }
 
 #[derive(Args, Debug, Clone)]

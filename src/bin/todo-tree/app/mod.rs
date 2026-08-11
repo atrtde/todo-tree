@@ -28,5 +28,6 @@ pub fn run() -> Result<()> {
         Command::Init(args) => commands::init::run(args),
         Command::Stats(args) => commands::stats::run(args, &cli.global),
         Command::Completions(args) => commands::completions::run(args),
+        Command::Man => commands::man::run(),
     }
 }
