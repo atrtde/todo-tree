@@ -5,11 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## todo-tree-1.1.0
 
-### Planned
+CLI improvements tracked against the [Command Line Interface Guidelines](https://clig.dev/).
 
-- CLI improvements tracked against the [Command Line Interface Guidelines](https://clig.dev/); see PR description for the task list.
+### Added
+
+- `--plain` flag on `scan`/`watch`/`list`/`stats`: uncolored, unlinked, script-friendly text output, distinct from `--json` (implies `--flat` unless `--json` is also set).
+- `completions <shell>` subcommand (bash/zsh/fish/powershell/elvish, via `clap_complete`), printing a completion script named for whichever binary (`todo-tree` or `tt`) generated it.
+- `man` subcommand (via `clap_mangen`), printing a roff man page to stdout.
+- `--no-input` global flag: disables interactive prompts (currently `tt init`'s overwrite confirmation), failing instead — for CI and scripted use.
+- `tt init` now asks before overwriting an existing config file when stdin is a TTY, instead of always requiring `--force`.
+- `TODO_TREE_TAGS`/`_INCLUDE`/`_EXCLUDE`/`_JSON`/`_FLAT`/`_NO_COLOR`/`_IGNORE_CASE`/`_REQUIRE_COLON` environment variables, layered between the config file and CLI flags (flags > env > config file > defaults).
+- `tt tags --remove` and `tt list --filter` suggest the closest configured tag ("did you mean?") on a likely typo, via a new edit-distance `display::closest_match` helper.
+- `--help` now leads with a block of common usage examples instead of only the flag/option listing.
+- `scan`/`list`/`stats` and `tt watch`'s initial scan print a "Scanning <path>..." indicator to stderr if the scan is still running after a second (only when stderr is a TTY and outside CI).
+
+### Changed
+
+- Both binaries now return a specific exit code per failure mode instead of always exiting `1`: `3` for a config file that exists but couldn't be parsed, `4` for a filesystem error (bad path, permissions, ...), `1` for anything else (clap's own argument-parsing errors already exit `2`).
+- Path-resolution and config-load/parse error messages now suggest a concrete next step (check existence/permissions, validate syntax) instead of only restating what failed.
+- `tt watch` collapses consecutive identical filesystem-watcher errors into one line with a repeat count instead of re-printing the same message per event.
 
 ## todo-tree-1.0.0
 
