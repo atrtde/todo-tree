@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand, ValueHint};
+use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -48,6 +49,14 @@ pub enum Command {
     Init(InitArgs),
     #[command(about = "Show summary stats for TODO matches")]
     Stats(StatsArgs),
+    #[command(about = "Generate a shell completion script")]
+    Completions(CompletionsArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct CompletionsArgs {
+    #[arg(help = "Shell to generate completions for")]
+    pub shell: Shell,
 }
 
 #[derive(Args, Debug, Clone)]
