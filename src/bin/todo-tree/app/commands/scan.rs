@@ -1,4 +1,4 @@
-use super::is_ci;
+use super::{is_ci, scan_with_progress, show_progress};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use std::path::PathBuf;
@@ -9,9 +9,12 @@ use todo_tree::scanner::{ScanOptions, Scanner};
 
 pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = args.path.clone().unwrap_or_else(|| PathBuf::from("."));
-    let path = path
-        .canonicalize()
-        .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
+    let path = path.canonicalize().wrap_err_with(|| {
+        format!(
+            "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+            path.display()
+        )
+    })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
@@ -50,13 +53,13 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
     };
 
     let scanner = Scanner::new(parser, scan_options);
-    let mut result = scanner.scan(&path)?;
+    let mut result = scan_with_progress(&scanner, &path, show_progress())?;
 
     result.sort_by(args.sort.into());
 
     let format = if args.json {
         OutputFormat::Json
-    } else if args.flat {
+    } else if args.flat || args.plain {
         OutputFormat::Flat
     } else if is_ci() {
         OutputFormat::Json
@@ -64,12 +67,13 @@ pub fn run(args: cli::ScanArgs, global: &cli::GlobalOptions) -> Result<()> {
         OutputFormat::Tree
     };
 
+    let colored = !global.no_color && !args.plain;
     let print_options = PrintOptions {
         format,
-        colored: !global.no_color,
+        colored,
         show_line_numbers: true,
         full_paths: false,
-        clickable_links: !global.no_color,
+        clickable_links: colored,
         base_path: Some(path),
         show_summary: format != OutputFormat::Json,
         group_by_tag: args.group_by_tag,

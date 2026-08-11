@@ -120,6 +120,12 @@ tt tags
 
 # Show statistics
 tt stats
+
+# Generate a shell completion script
+tt completions zsh > /usr/local/share/zsh/site-functions/_tt
+
+# Generate a man page
+tt man > /usr/local/share/man/man1/tt.1
 ```
 
 ### Watch Mode
@@ -134,13 +140,19 @@ File-system events are filtered through the same `.gitignore` and `--include`/`-
 
 ### Output Formats
 
-`tt scan`/`tt` (default), `tt list`, `tt watch`, and `tt stats` render human-oriented output locally: a colored tree (or flat list for `tt list`), plus a summary block. Pass `--json` to switch any of them to machine-readable JSON, or `--flat` (`tt scan`/`tt watch` only) for a flat, ungrouped list.
+`tt scan`/`tt` (default), `tt list`, `tt watch`, and `tt stats` render human-oriented output locally: a colored tree (or flat list for `tt list`), plus a summary block. Pass `--json` to switch any of them to machine-readable JSON, `--flat` (`tt scan`/`tt watch` only) for a flat, ungrouped list, or `--plain` for uncolored, unlinked, script-friendly text (implies `--flat` unless `--json` is also set).
+
+Scans that take over a second print a "Scanning..." indicator to stderr (only when stderr is a terminal and outside CI), so a large tree doesn't look hung.
+
+### Exit Codes
+
+`todo-tree`/`tt` return `0` on success and a specific non-zero code otherwise, so scripts can branch on failure mode without parsing stderr: `1` for an unclassified error, `2` for a command-line usage error (from argument parsing itself), `3` for a config file that exists but couldn't be parsed, and `4` for a filesystem error (bad path, permissions, ...).
 
 **CI auto-detection:** when a `CI` environment variable is set — as GitHub Actions, GitLab CI, CircleCI, Travis CI, and most other providers do by default — these commands default to JSON output instead of the local tree/flat/text output, so CI logs and downstream tooling get structured data without needing `--json` on every invocation. An explicit `--json` or `--flat` flag always overrides this auto-detection.
 
 ## Configuration
 
-Create a `.todorc.json` or `.todorc.toml` file in your project root:
+Create a `.todorc.json` or `.todorc.toml` file in your project root, either by hand or with `tt init` (`--format toml` for TOML). If the file already exists, `tt init` asks before overwriting it when running interactively; pass `--force` to overwrite unconditionally, or `--no-input` (global flag) to fail instead of prompting, e.g. in CI:
 
 ### JSON Format (`.todorc.json`)
 
@@ -175,6 +187,14 @@ no_color = false
 3. `.todorc.toml` in the current directory
 4. Parent directories (recursive)
 5. `$XDG_CONFIG_HOME/todo-tree/config.json` or `config.toml` (global config); falls back to the platform config directory (e.g. `~/.config` on Linux, `~/Library/Application Support` on macOS) if `XDG_CONFIG_HOME` isn't set
+
+### Environment Variables
+
+`TODO_TREE_TAGS`, `TODO_TREE_INCLUDE`, and `TODO_TREE_EXCLUDE` (comma-separated) and `TODO_TREE_JSON`/`TODO_TREE_FLAT`/`TODO_TREE_NO_COLOR`/`TODO_TREE_IGNORE_CASE`/`TODO_TREE_REQUIRE_COLON` (booleans) override the loaded config file. Full precedence, highest first: **CLI flags > environment variables > project/user `.todorc` file > built-in defaults**.
+
+```bash
+TODO_TREE_TAGS=TODO,FIXME TODO_TREE_NO_COLOR=1 tt
+```
 
 ## Tag Matching Rules
 

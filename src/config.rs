@@ -16,6 +16,29 @@ fn config_home() -> Option<PathBuf> {
         .or_else(dirs::config_dir)
 }
 
+/// Reads `name` as a comma-separated list, trimming entries and dropping
+/// empty ones. Returns `None` if the variable is unset or resolves to an
+/// empty list (so it doesn't clobber the config file's value with nothing).
+fn env_list(name: &str) -> Option<Vec<String>> {
+    let value = std::env::var(name).ok()?;
+    let items: Vec<String> = value
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect();
+
+    if items.is_empty() { None } else { Some(items) }
+}
+
+/// Reads `name` as a boolean: unset, empty, `0`, or `false` (case-insensitive)
+/// is `false`; any other value is `true`. Returns `None` if unset, so the
+/// config file's value is left alone rather than forced off.
+fn env_bool(name: &str) -> Option<bool> {
+    let value = std::env::var(name).ok()?;
+    Some(!value.is_empty() && value != "0" && !value.eq_ignore_ascii_case("false"))
+}
+
 /// CLI-provided overrides to merge into a loaded [`Config`].
 #[derive(Debug, Clone, Default)]
 pub struct CliOptions {
@@ -129,8 +152,12 @@ impl Config {
     /// TOML from its extension (falling back to JSON-then-TOML for
     /// extensionless files like `.todorc`).
     pub fn load_from_file(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
-            .wrap_err_with(|| format!("Failed to read config file: {}", path.display()))?;
+        let content = std::fs::read_to_string(path).wrap_err_with(|| {
+            format!(
+                "Failed to read config file: {}. Check that it exists and you have permission to read it.",
+                path.display()
+            )
+        })?;
 
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let parse_result: Result<Self> = if extension == "toml" {
@@ -141,7 +168,13 @@ impl Config {
                 .or_else(|_| toml::from_str(&content).map_err(|e| color_eyre::eyre::eyre!(e)))
         };
 
-        parse_result.wrap_err_with(|| format!("Failed to parse config: {}", path.display()))
+        parse_result.wrap_err_with(|| {
+            format!(
+                "Failed to parse config: {}. Check that it's valid {} and that its keys match the documented .todorc options.",
+                path.display(),
+                if extension == "toml" { "TOML" } else { "JSON (or TOML)" }
+            )
+        })
     }
 
     /// Merges CLI-provided overrides into this config in place.
@@ -187,15 +220,54 @@ impl Config {
 
     /// Loads a config, honoring an explicit `config_path` override before
     /// falling back to [`Config::load`]'s discovery starting at `path`, and
-    /// finally to [`Config::new`] if nothing is found anywhere.
+    /// finally to [`Config::new`] if nothing is found anywhere. `TODO_TREE_*`
+    /// environment variables (see [`Config::apply_env_overrides`]) are then
+    /// layered on top, so the full precedence is: CLI flags (applied by the
+    /// caller via [`Config::merge_with_cli`]) > environment > project/user
+    /// config file > built-in defaults.
     pub fn load_or_default(path: &Path, config_path: Option<&Path>) -> Result<Self> {
-        if let Some(config_path) = config_path {
-            return Self::load_from_file(config_path);
-        }
+        let mut config = if let Some(config_path) = config_path {
+            Self::load_from_file(config_path)?
+        } else {
+            match Self::load(path)? {
+                Some(config) => config,
+                None => Self::new(),
+            }
+        };
 
-        match Self::load(path)? {
-            Some(config) => Ok(config),
-            None => Ok(Self::new()),
+        config.apply_env_overrides();
+        Ok(config)
+    }
+
+    /// Applies `TODO_TREE_*` environment variable overrides in place, sitting
+    /// between the config file and CLI flags in precedence. Recognizes
+    /// `TODO_TREE_TAGS`/`_INCLUDE`/`_EXCLUDE` (comma-separated lists) and
+    /// `TODO_TREE_JSON`/`_FLAT`/`_NO_COLOR`/`_IGNORE_CASE`/`_REQUIRE_COLON`
+    /// (booleans: unset/empty/`0`/`false` is off, anything else is on).
+    fn apply_env_overrides(&mut self) {
+        if let Some(tags) = env_list("TODO_TREE_TAGS") {
+            self.tags = tags;
+        }
+        if let Some(include) = env_list("TODO_TREE_INCLUDE") {
+            self.include = include;
+        }
+        if let Some(exclude) = env_list("TODO_TREE_EXCLUDE") {
+            self.exclude.extend(exclude);
+        }
+        if let Some(value) = env_bool("TODO_TREE_JSON") {
+            self.json = value;
+        }
+        if let Some(value) = env_bool("TODO_TREE_FLAT") {
+            self.flat = value;
+        }
+        if let Some(value) = env_bool("TODO_TREE_NO_COLOR") {
+            self.no_color = value;
+        }
+        if let Some(value) = env_bool("TODO_TREE_IGNORE_CASE") {
+            self.ignore_case = value;
+        }
+        if let Some(value) = env_bool("TODO_TREE_REQUIRE_COLON") {
+            self.require_colon = value;
         }
     }
 
@@ -533,6 +605,83 @@ mod tests {
         assert_eq!(config.no_color, config_before.no_color);
         assert_eq!(config.ignore_case, config_before.ignore_case);
         assert_eq!(config.require_colon, config_before.require_colon);
+    }
+
+    // `TODO_TREE_*` vars are process-global; serialize tests that touch them.
+    static TODO_TREE_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Clears every `TODO_TREE_*` override var this module tests, so each
+    /// test starts from a known-empty environment regardless of test order.
+    fn clear_todo_tree_env() {
+        for var in [
+            "TODO_TREE_TAGS",
+            "TODO_TREE_INCLUDE",
+            "TODO_TREE_EXCLUDE",
+            "TODO_TREE_JSON",
+            "TODO_TREE_FLAT",
+            "TODO_TREE_NO_COLOR",
+            "TODO_TREE_IGNORE_CASE",
+            "TODO_TREE_REQUIRE_COLON",
+        ] {
+            // SAFETY: see XDG_ENV_LOCK above; same narrow-window rationale.
+            unsafe {
+                std::env::remove_var(var);
+            }
+        }
+    }
+
+    #[test]
+    fn apply_env_overrides_applies_every_recognized_var() {
+        let _lock = TODO_TREE_ENV_LOCK.lock().unwrap();
+        clear_todo_tree_env();
+
+        let mut config = Config::new();
+        config.exclude = vec!["existing/**".to_string()];
+
+        // SAFETY: see XDG_ENV_LOCK above; same narrow-window rationale.
+        unsafe {
+            std::env::set_var("TODO_TREE_TAGS", "CUSTOM, OTHER");
+            std::env::set_var("TODO_TREE_INCLUDE", "*.rs");
+            std::env::set_var("TODO_TREE_EXCLUDE", "extra/**");
+            std::env::set_var("TODO_TREE_JSON", "true");
+            std::env::set_var("TODO_TREE_FLAT", "1");
+            std::env::set_var("TODO_TREE_NO_COLOR", "true");
+            std::env::set_var("TODO_TREE_IGNORE_CASE", "true");
+            std::env::set_var("TODO_TREE_REQUIRE_COLON", "false");
+        }
+        config.apply_env_overrides();
+        clear_todo_tree_env();
+
+        assert_eq!(config.tags, vec!["CUSTOM".to_string(), "OTHER".to_string()]);
+        assert_eq!(config.include, vec!["*.rs".to_string()]);
+        assert_eq!(
+            config.exclude,
+            vec!["existing/**".to_string(), "extra/**".to_string()]
+        );
+        assert!(config.json);
+        assert!(config.flat);
+        assert!(config.no_color);
+        assert!(config.ignore_case);
+        assert!(!config.require_colon);
+    }
+
+    #[test]
+    fn apply_env_overrides_is_a_no_op_when_unset() {
+        let _lock = TODO_TREE_ENV_LOCK.lock().unwrap();
+        clear_todo_tree_env();
+
+        let before = Config::new();
+        let mut config = Config::new();
+        config.apply_env_overrides();
+
+        assert_eq!(config.tags, before.tags);
+        assert_eq!(config.include, before.include);
+        assert_eq!(config.exclude, before.exclude);
+        assert_eq!(config.json, before.json);
+        assert_eq!(config.flat, before.flat);
+        assert_eq!(config.no_color, before.no_color);
+        assert_eq!(config.ignore_case, before.ignore_case);
+        assert_eq!(config.require_colon, before.require_colon);
     }
 
     #[test]

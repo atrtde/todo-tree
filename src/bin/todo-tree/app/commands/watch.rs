@@ -1,7 +1,7 @@
 //! `tt watch`: scans once, then re-scans and reprints on relevant file
 //! changes until interrupted.
 
-use super::is_ci;
+use super::{is_ci, scan_with_progress, show_progress};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use ignore::Match;
@@ -9,6 +9,7 @@ use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::overrides::{Override, OverrideBuilder};
 use notify_debouncer_mini::notify::RecursiveMode;
 use notify_debouncer_mini::{DebounceEventResult, new_debouncer};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
@@ -23,9 +24,12 @@ use todo_tree::scanner::{ScanOptions, Scanner};
 pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scan_args = args.scan;
     let path = scan_args.path.clone().unwrap_or_else(|| PathBuf::from("."));
-    let path = path
-        .canonicalize()
-        .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
+    let path = path.canonicalize().wrap_err_with(|| {
+        format!(
+            "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+            path.display()
+        )
+    })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
@@ -71,7 +75,7 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
 
     let format = if scan_args.json {
         OutputFormat::Json
-    } else if scan_args.flat {
+    } else if scan_args.flat || scan_args.plain {
         OutputFormat::Flat
     } else if is_ci() {
         OutputFormat::Json
@@ -79,19 +83,20 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
         OutputFormat::Tree
     };
 
+    let colored = !global.no_color && !scan_args.plain;
     let print_options = PrintOptions {
         format,
-        colored: !global.no_color,
+        colored,
         show_line_numbers: true,
         full_paths: false,
-        clickable_links: !global.no_color,
+        clickable_links: colored,
         base_path: Some(path.clone()),
         show_summary: format != OutputFormat::Json,
         group_by_tag: scan_args.group_by_tag,
     };
     let printer = Printer::new(print_options);
 
-    rescan(&scanner, &path, scan_args.sort, &printer)?;
+    rescan(&scanner, &path, scan_args.sort, &printer, show_progress())?;
 
     let (tx, rx) = mpsc::channel::<DebounceEventResult>();
     let mut debouncer = new_debouncer(Duration::from_millis(args.debounce_ms), tx)
@@ -106,15 +111,33 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
         path.display()
     );
 
+    // Consecutive identical watch errors (e.g. a permission error firing on
+    // every debounced event from the same directory) are collapsed into one
+    // line with a repeat count instead of spamming the same message.
+    let mut last_watch_error: Option<String> = None;
+    let mut repeat_count = 0u32;
+
     for result in rx {
         match result {
             Ok(events) => {
                 if events.iter().any(|event| filter.is_relevant(&event.path)) {
-                    rescan(&scanner, &path, scan_args.sort, &printer)?;
+                    rescan(&scanner, &path, scan_args.sort, &printer, false)?;
                 }
             }
             Err(err) => {
-                eprintln!("Watch error: {err}");
+                let message = err.to_string();
+                if last_watch_error.as_deref() == Some(message.as_str()) {
+                    repeat_count += 1;
+                    eprint!("\rWatch error: {message} (x{})", repeat_count + 1);
+                    io::stderr().flush().ok();
+                } else {
+                    if repeat_count > 0 {
+                        eprintln!();
+                    }
+                    eprintln!("Watch error: {message}");
+                    last_watch_error = Some(message);
+                    repeat_count = 0;
+                }
             }
         }
     }
@@ -123,10 +146,19 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
 }
 
 /// Scans `path` with `scanner`, sorts the result by `sort`, and prints it
-/// with `printer`. Called once up front and again after every relevant
-/// file-change event.
-fn rescan(scanner: &Scanner, path: &Path, sort: cli::SortOrder, printer: &Printer) -> Result<()> {
-    let mut result = scanner.scan(path)?;
+/// with `printer`. Called once up front (with `progress` typically enabled,
+/// since the first scan of a large tree has nothing else to show for it
+/// yet) and again after every relevant file-change event (with `progress`
+/// off, since those re-scans reuse cached overrides and are expected to be
+/// fast).
+fn rescan(
+    scanner: &Scanner,
+    path: &Path,
+    sort: cli::SortOrder,
+    printer: &Printer,
+    progress: bool,
+) -> Result<()> {
+    let mut result = scan_with_progress(scanner, path, progress)?;
     result.sort_by(sort.into());
     printer.print(&result)?;
     Ok(())

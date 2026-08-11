@@ -3,7 +3,7 @@ use color_eyre::eyre::Result;
 use todo_tree::config::Config;
 use todo_tree::core::TodoPriority;
 use todo_tree::core::tags::default_tag_names;
-use todo_tree::display::priority_to_color;
+use todo_tree::display::{closest_match, priority_to_color};
 
 pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let current_dir = std::env::current_dir()?;
@@ -27,7 +27,13 @@ pub fn run(args: cli::TagsArgs, global: &cli::GlobalOptions) -> Result<()> {
             config.save_in_cwd()?;
             println!("Removed tag: {}", remove_tag);
         } else {
-            println!("Tag not found: {}", remove_tag);
+            let suggestion = closest_match(remove_tag, config.tags.iter().map(String::as_str));
+            match suggestion {
+                Some(suggestion) => {
+                    println!("Tag not found: {remove_tag} (did you mean {suggestion}?)")
+                }
+                None => println!("Tag not found: {remove_tag}"),
+            }
         }
         return Ok(());
     }

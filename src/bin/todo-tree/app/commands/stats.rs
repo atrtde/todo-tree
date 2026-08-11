@@ -1,4 +1,4 @@
-use super::is_ci;
+use super::{is_ci, scan_with_progress, show_progress};
 use crate::app::cli;
 use color_eyre::eyre::{Result, WrapErr};
 use colored::Colorize;
@@ -14,9 +14,12 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
         .path
         .clone()
         .unwrap_or_else(|| std::path::PathBuf::from("."));
-    let path = path
-        .canonicalize()
-        .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
+    let path = path.canonicalize().wrap_err_with(|| {
+        format!(
+            "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+            path.display()
+        )
+    })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
@@ -51,7 +54,12 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
     };
 
     let scanner = Scanner::new(parser, scan_options);
-    let result = scanner.scan(&path)?;
+    let result = scan_with_progress(&scanner, &path, show_progress())?;
+
+    let plain = global.no_color || args.plain;
+    if args.plain {
+        colored::control::set_override(false);
+    }
 
     if args.json || is_ci() {
         let stats = json!({
@@ -100,7 +108,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
             let filled = ((percentage / 100.0) * bar_width as f64) as usize;
             let bar: String = "█".repeat(filled) + &"░".repeat(bar_width - filled);
 
-            if global.no_color {
+            if plain {
                 println!("  {:<8} {:>4} ({:>5.1}%) {}", tag, count, percentage, bar);
             } else {
                 let color = priority_to_color(TodoPriority::from_tag(tag));

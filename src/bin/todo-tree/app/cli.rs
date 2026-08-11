@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand, ValueHint};
+use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -8,6 +9,14 @@ use std::path::PathBuf;
     version,
     about,
     long_about = None,
+    before_help = "\
+Examples:
+  tt                              Scan the current directory
+  tt scan ./src --tags TODO,FIXME Scan for specific tags only
+  tt watch --json > todos.jsonl   Re-scan on save, streaming JSON
+  tt list --filter BUG            List only BUG items, flat
+  tt stats --plain                Summary counts, no color
+",
 )]
 pub struct Cli {
     #[command(flatten)]
@@ -32,6 +41,13 @@ pub struct GlobalOptions {
         help = "Path to config file"
     )]
     pub config: Option<PathBuf>,
+
+    #[arg(
+        long,
+        global = true,
+        help = "Never prompt interactively; fail instead of asking for confirmation"
+    )]
+    pub no_input: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -48,6 +64,16 @@ pub enum Command {
     Init(InitArgs),
     #[command(about = "Show summary stats for TODO matches")]
     Stats(StatsArgs),
+    #[command(about = "Generate a shell completion script")]
+    Completions(CompletionsArgs),
+    #[command(about = "Generate a man page")]
+    Man,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct CompletionsArgs {
+    #[arg(help = "Shell to generate completions for")]
+    pub shell: Shell,
 }
 
 #[derive(Args, Debug, Clone)]
@@ -80,6 +106,11 @@ pub struct ScanArgs {
     #[arg(long, help = "Print flat output without grouping by file")]
     pub flat: bool,
     #[arg(
+        long,
+        help = "Plain output: no color, no symbols, no hyperlinks (implies --flat unless --json is set)"
+    )]
+    pub plain: bool,
+    #[arg(
         short,
         long,
         default_value = "0",
@@ -109,6 +140,7 @@ impl Default for ScanArgs {
             exclude: None,
             json: false,
             flat: false,
+            plain: false,
             depth: 0,
             follow_links: false,
             hidden: false,
@@ -159,6 +191,8 @@ pub struct ListArgs {
     pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
+    #[arg(long, help = "Plain output: no color, no symbols, no hyperlinks")]
+    pub plain: bool,
     #[arg(long, help = "Filter results by a specific tag")]
     pub filter: Option<String>,
     #[arg(long, help = "Ignore case when matching tags")]
@@ -218,6 +252,8 @@ pub struct StatsArgs {
     pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
+    #[arg(long, help = "Plain output: no color, no symbols, no hyperlinks")]
+    pub plain: bool,
     #[arg(long, help = "Ignore case when matching tags")]
     pub ignore_case: bool,
     #[arg(long, help = "Allow tags without a trailing colon")]
@@ -270,6 +306,7 @@ impl From<ScanArgs> for ListArgs {
             include: scan.include,
             exclude: scan.exclude,
             json: scan.json,
+            plain: scan.plain,
             filter: None,
             ignore_case: scan.ignore_case,
             no_require_colon: scan.no_require_colon,

@@ -2,10 +2,12 @@
 
 pub(crate) mod cli;
 pub(crate) mod commands;
+pub(crate) mod exit_code;
 
 use clap::Parser;
 use cli::{Cli, Command};
 use color_eyre::eyre::Result;
+pub use exit_code::exit_code_for;
 
 /// Parse CLI args, install error reporting, and dispatch to the matching
 /// command handler.
@@ -23,7 +25,9 @@ pub fn run() -> Result<()> {
         Command::Watch(args) => commands::watch::run(args, &cli.global),
         Command::List(args) => commands::list::run(args, &cli.global),
         Command::Tags(args) => commands::tags::run(args, &cli.global),
-        Command::Init(args) => commands::init::run(args),
+        Command::Init(args) => commands::init::run(args, &cli.global),
         Command::Stats(args) => commands::stats::run(args, &cli.global),
+        Command::Completions(args) => commands::completions::run(args),
+        Command::Man => commands::man::run(),
     }
 }
