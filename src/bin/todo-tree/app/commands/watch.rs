@@ -9,6 +9,7 @@ use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use ignore::overrides::{Override, OverrideBuilder};
 use notify_debouncer_mini::notify::RecursiveMode;
 use notify_debouncer_mini::{DebounceEventResult, new_debouncer};
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;
@@ -25,7 +26,12 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
     let path = scan_args.path.clone().unwrap_or_else(|| PathBuf::from("."));
     let path = path
         .canonicalize()
-        .wrap_err_with(|| format!("Failed to resolve path: {}", path.display()))?;
+        .wrap_err_with(|| {
+            format!(
+                "Failed to resolve path: {}. Check that it exists and you have permission to read it.",
+                path.display()
+            )
+        })?;
 
     let mut config = Config::load_or_default(&path, global.config.as_deref())?;
     config.merge_with_cli(CliOptions {
@@ -107,6 +113,12 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
         path.display()
     );
 
+    // Consecutive identical watch errors (e.g. a permission error firing on
+    // every debounced event from the same directory) are collapsed into one
+    // line with a repeat count instead of spamming the same message.
+    let mut last_watch_error: Option<String> = None;
+    let mut repeat_count = 0u32;
+
     for result in rx {
         match result {
             Ok(events) => {
@@ -115,7 +127,19 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
                 }
             }
             Err(err) => {
-                eprintln!("Watch error: {err}");
+                let message = err.to_string();
+                if last_watch_error.as_deref() == Some(message.as_str()) {
+                    repeat_count += 1;
+                    eprint!("\rWatch error: {message} (x{})", repeat_count + 1);
+                    io::stderr().flush().ok();
+                } else {
+                    if repeat_count > 0 {
+                        eprintln!();
+                    }
+                    eprintln!("Watch error: {message}");
+                    last_watch_error = Some(message);
+                    repeat_count = 0;
+                }
             }
         }
     }

@@ -129,8 +129,12 @@ impl Config {
     /// TOML from its extension (falling back to JSON-then-TOML for
     /// extensionless files like `.todorc`).
     pub fn load_from_file(path: &Path) -> Result<Self> {
-        let content = std::fs::read_to_string(path)
-            .wrap_err_with(|| format!("Failed to read config file: {}", path.display()))?;
+        let content = std::fs::read_to_string(path).wrap_err_with(|| {
+            format!(
+                "Failed to read config file: {}. Check that it exists and you have permission to read it.",
+                path.display()
+            )
+        })?;
 
         let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
         let parse_result: Result<Self> = if extension == "toml" {
@@ -141,7 +145,13 @@ impl Config {
                 .or_else(|_| toml::from_str(&content).map_err(|e| color_eyre::eyre::eyre!(e)))
         };
 
-        parse_result.wrap_err_with(|| format!("Failed to parse config: {}", path.display()))
+        parse_result.wrap_err_with(|| {
+            format!(
+                "Failed to parse config: {}. Check that it's valid {} and that its keys match the documented .todorc options.",
+                path.display(),
+                if extension == "toml" { "TOML" } else { "JSON (or TOML)" }
+            )
+        })
     }
 
     /// Merges CLI-provided overrides into this config in place.
