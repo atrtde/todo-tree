@@ -15,7 +15,7 @@ use std::path::PathBuf;
   tt scan ./src --tags TODO,FIXME Scan for specific tags only\n\
   tt watch --json > todos.jsonl   Re-scan on save, streaming JSON\n\
   tt list --filter BUG            List only BUG items, flat\n\
-  tt stats --plain                Summary counts, no color",
+  tt stats --plain                Summary counts, no color"
 )]
 pub struct Cli {
     #[command(flatten)]
