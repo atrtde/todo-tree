@@ -71,7 +71,7 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
 
     let format = if scan_args.json {
         OutputFormat::Json
-    } else if scan_args.flat {
+    } else if scan_args.flat || scan_args.plain {
         OutputFormat::Flat
     } else if is_ci() {
         OutputFormat::Json
@@ -79,12 +79,13 @@ pub fn run(args: cli::WatchArgs, global: &cli::GlobalOptions) -> Result<()> {
         OutputFormat::Tree
     };
 
+    let colored = !global.no_color && !scan_args.plain;
     let print_options = PrintOptions {
         format,
-        colored: !global.no_color,
+        colored,
         show_line_numbers: true,
         full_paths: false,
-        clickable_links: !global.no_color,
+        clickable_links: colored,
         base_path: Some(path.clone()),
         show_summary: format != OutputFormat::Json,
         group_by_tag: scan_args.group_by_tag,

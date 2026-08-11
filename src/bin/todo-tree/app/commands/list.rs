@@ -58,12 +58,13 @@ pub fn run(args: cli::ListArgs, global: &cli::GlobalOptions) -> Result<()> {
         OutputFormat::Flat
     };
 
+    let colored = !global.no_color && !args.plain;
     let print_options = PrintOptions {
         format,
-        colored: !global.no_color,
+        colored,
         show_line_numbers: true,
         full_paths: false,
-        clickable_links: !global.no_color,
+        clickable_links: colored,
         base_path: Some(path),
         show_summary: format != OutputFormat::Json,
         group_by_tag: false,

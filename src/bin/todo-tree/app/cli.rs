@@ -80,6 +80,11 @@ pub struct ScanArgs {
     #[arg(long, help = "Print flat output without grouping by file")]
     pub flat: bool,
     #[arg(
+        long,
+        help = "Plain output: no color, no symbols, no hyperlinks (implies --flat unless --json is set)"
+    )]
+    pub plain: bool,
+    #[arg(
         short,
         long,
         default_value = "0",
@@ -109,6 +114,7 @@ impl Default for ScanArgs {
             exclude: None,
             json: false,
             flat: false,
+            plain: false,
             depth: 0,
             follow_links: false,
             hidden: false,
@@ -159,6 +165,11 @@ pub struct ListArgs {
     pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
+    #[arg(
+        long,
+        help = "Plain output: no color, no symbols, no hyperlinks"
+    )]
+    pub plain: bool,
     #[arg(long, help = "Filter results by a specific tag")]
     pub filter: Option<String>,
     #[arg(long, help = "Ignore case when matching tags")]
@@ -218,6 +229,11 @@ pub struct StatsArgs {
     pub exclude: Option<Vec<String>>,
     #[arg(long, help = "Output results in JSON format")]
     pub json: bool,
+    #[arg(
+        long,
+        help = "Plain output: no color, no symbols, no hyperlinks"
+    )]
+    pub plain: bool,
     #[arg(long, help = "Ignore case when matching tags")]
     pub ignore_case: bool,
     #[arg(long, help = "Allow tags without a trailing colon")]
@@ -270,6 +286,7 @@ impl From<ScanArgs> for ListArgs {
             include: scan.include,
             exclude: scan.exclude,
             json: scan.json,
+            plain: scan.plain,
             filter: None,
             ignore_case: scan.ignore_case,
             no_require_colon: scan.no_require_colon,

@@ -53,6 +53,11 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
     let scanner = Scanner::new(parser, scan_options);
     let result = scanner.scan(&path)?;
 
+    let plain = global.no_color || args.plain;
+    if args.plain {
+        colored::control::set_override(false);
+    }
+
     if args.json || is_ci() {
         let stats = json!({
             "total_items": result.summary.total_count,
@@ -100,7 +105,7 @@ pub fn run(args: cli::StatsArgs, global: &cli::GlobalOptions) -> Result<()> {
             let filled = ((percentage / 100.0) * bar_width as f64) as usize;
             let bar: String = "█".repeat(filled) + &"░".repeat(bar_width - filled);
 
-            if global.no_color {
+            if plain {
                 println!("  {:<8} {:>4} ({:>5.1}%) {}", tag, count, percentage, bar);
             } else {
                 let color = priority_to_color(TodoPriority::from_tag(tag));
