@@ -33,6 +33,13 @@ pub struct GlobalOptions {
         help = "Path to config file"
     )]
     pub config: Option<PathBuf>,
+
+    #[arg(
+        long,
+        global = true,
+        help = "Never prompt interactively; fail instead of asking for confirmation"
+    )]
+    pub no_input: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]
