@@ -7,16 +7,15 @@ use std::path::PathBuf;
     name = "todo-tree",
     author,
     version,
-    about,
-    long_about = None,
-    before_help = "\
-Examples:
-  tt                              Scan the current directory
-  tt scan ./src --tags TODO,FIXME Scan for specific tags only
-  tt watch --json > todos.jsonl   Re-scan on save, streaming JSON
-  tt list --filter BUG            List only BUG items, flat
-  tt stats --plain                Summary counts, no color
-",
+    about = "A CLI tool to find and display TODO-style comments in your codebase",
+    long_about = "A CLI tool to find and display TODO-style comments in your codebase\n\
+\n\
+Examples:\n\
+  tt                              Scan the current directory\n\
+  tt scan ./src --tags TODO,FIXME Scan for specific tags only\n\
+  tt watch --json > todos.jsonl   Re-scan on save, streaming JSON\n\
+  tt list --filter BUG            List only BUG items, flat\n\
+  tt stats --plain                Summary counts, no color",
 )]
 pub struct Cli {
     #[command(flatten)]
