@@ -5,6 +5,10 @@
 #[path = "../todo-tree/app/mod.rs"]
 mod app;
 
-fn main() -> color_eyre::eyre::Result<()> {
-    app::run()
+fn main() {
+    let result = app::run();
+    if let Err(report) = &result {
+        eprintln!("{report:?}");
+    }
+    std::process::exit(app::exit_code_for(&result));
 }
